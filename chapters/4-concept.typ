@@ -1,32 +1,25 @@
 #import "global.typ": *
 
-= Concept
+= Konzept
 
-#lorem(30)
+== Motivation für hierarchisches Routing
 
-#todo(
-  [ Describe an overall concept of a solution, which could possibly solve a given
-    problem. Design a novel solution and visualise the architecture and relevant
-    (data) flows. Compare and relate your approach to possible alternatives and
-    argue why and in which way(s) the suggested solution(s) will be better. ],
-)
+Der A\*-Algorithmus liefert auf Graphen mit einer zulässigen Heuristik garantiert optimale Pfade (Hart et al., 1968). Auf großen Straßennetzen entsteht jedoch ein praktisches Problem: Bei Anfragen über längere Distanzen expandiert A\* eine sehr große Anzahl von Knoten, da der Suchhorizont sich weit über die direkte Route hinaus ausbreitet. Zwar lenkt die euklidische Distanzheuristik die Suche in die richtige Richtung, dennoch werden zahlreiche Knoten und Kanten besucht, die für den tatsächlichen Pfad irrelevant sind. Für interaktive Navigationssysteme, die in Echtzeit antworten müssen, ist dieses Verhalten bei wachsender Graphgröße ein ernsthaftes Problem.
+Die Grundidee hierarchischen Routings besteht darin, den Graphen in mehrere Abstraktionsebenen zu überführen. Auf einer höheren Ebene existiert eine kompaktere Repräsentation, die die grobe Struktur des Graphen erhält, aber nur einen Bruchteil der ursprünglichen Knoten und Kanten enthält. Eine Suchanfrage wird zunächst auf dieser abstrakten Ebene bearbeitet, wo sie wesentlich günstiger ist, und anschließend auf der Basisebene verfeinert. Botea et al. (2004) zeigen mit HPA\*, dass dieser Ansatz die Anzahl expandierter Knoten erheblich reduzieren kann, bei nur geringfügiger Einbuße an Pfadqualität.
 
+== Graphpartitionierung via Voronoi-Clustering
 
-#todo(
-  [
-  #v(3cm)
+Voraussetzung für eine solche Hierarchie ist eine Zerlegung des Basisgraphen in zusammenhängende Teilbereiche, sogenannte Cluster. In der vorliegenden Arbeit wird dazu ein Verfahren verwendet, das sich am Konzept des Network Voronoi Diagrams (NVD) orientiert. Kolahdouzan und Shahabi (2004) definieren das NVD als eine Spezialisierung des Voronoi-Diagramms für Graphen, bei der die Distanz zwischen zwei Objekten nicht die euklidische, sondern die kürzeste Netzwerkdistanz ist. Jeder Knoten des Graphen wird dem Seed-Knoten zugewiesen, zu dem er die geringste Netzwerkdistanz aufweist.
+In der Praxis wird dieses Clustering durch einen simultanen Dijkstra-Lauf von allen Seed-Knoten gleichzeitig realisiert. Die Wellenfront jedes Seeds breitet sich im Graphen aus, bis alle Knoten einem Cluster zugewiesen sind. Knoten, an denen zwei Wellenfronten aufeinandertreffen, markieren die Clustergrenzen. Die Wahl netzwerkbasierter statt euklidischer Distanz ist dabei für Straßennetze entscheidend: Geographische Barrieren wie Flüsse, Bahnlinien oder nicht überquerbare Straßen werden durch die tatsächliche Graphstruktur korrekt abgebildet. Eine rein euklidische Zuweisung könnte Knoten zusammenfassen, die im Netzwerk weit voneinander entfernt oder gar nicht verbunden sind.
+Als Seed-Strategie wird in dieser Arbeit ein reguläres geografisches Gitter über das Kartengebiet gelegt, dessen Rasterpunkte auf die jeweils nächstgelegenen OSM-Knoten gesnapped werden. Diese Methode ist für den vorliegenden Anwendungsfall geeignet: Da die verwendeten OSM-Extrakte rechteckige Gebiete abdecken, erzeugt ein gleichmäßiges Gitter eine hinreichend ausgewogene Initialverteilung der Seeds. Alternativen, wie die Auswahl zufälliger unbesetzter Knoten, könnten organischere Cluster erzeugen, wurden jedoch im Rahmen dieser Arbeit nicht implementiert, da die Optimierung der Clustering-Methode selbst nicht Gegenstand der Untersuchung ist.
 
-  *Hints for formatting in Typst*:
+== Gate-Node-Architektur
 
-  + You can use built-in styles:
-    + with underscore (\_) to _emphasise_ text
-    + forward dash (\`) for `monospaced` text
-    + asterisk (\*) for *strong* (bold) text
+Nachdem der Graph partitioniert ist, muss eine abstrakte Repräsentation konstruiert werden. Eine naive Lösung wäre, jeden Cluster durch genau einen Knoten im abstrakten Graphen darzustellen. Dieser Ansatz ist jedoch problematisch: Ein solcher Knoten entspricht keinem realen Punkt im Basisgraphen, weshalb keine sinnvolle Kantengewichtung zwischen zwei benachbarten Cluster-Knoten definiert werden kann. Die Kosten für den Übergang von Cluster A nach Cluster B hängen nicht nur davon ab, welche Cluster benachbart sind, sondern konkret davon, an welcher Stelle die Grenze überquert wird.
+Dieses Problem wird durch die Einführung von Gate Nodes gelöst, wie sie analog auch bei Botea et al. (2004) als Transition Points beschrieben werden. Gate Nodes sind reale Knoten des Basisgraphen, die an der Grenze zwischen zwei Clustern liegen. Im abstrakten Graphen gibt es zwei Arten von Kanten: Inter-Cluster-Kanten verbinden Gate Nodes aus benachbarten Clustern und repräsentieren den Übergang zwischen Clustern; Intra-Cluster-Kanten verbinden Gate Nodes innerhalb desselben Clusters und repräsentieren die Kosten, diesen Cluster von einem Eingang zu einem Ausgang zu durchqueren.
+Die Gewichtung der Intra-Cluster-Kanten wird zur Build-Time berechnet. Für jedes Cluster wird A\* zwischen allen Paaren von Gate Nodes ausgeführt, wobei die Suche auf den Teilgraphen des jeweiligen Clusters beschränkt ist. Das resultierende Kantengewicht entspricht den tatsächlichen optimalen Traversierungskosten innerhalb des Clusters. Nur weil Gate Nodes echte Knoten des Basisgraphen sind, ist diese Kostenberechnung überhaupt möglich.
 
-  You can create and use your own (custom) formatting macros:
+== Zwei-Phasen-Architektur: Build-Time und Query-Time
 
-  + check out the custom style (see in file `lib.typ`):
-    + `#textit` for #textit([italic]) text
-    + `#textbf` for #textbf([bold face]) text
-  ],
-)
+Das System ist in zwei klar getrennte Phasen unterteilt. In der Build-Phase wird der OSM-Extrakt eingelesen, das Clustering durchgeführt, die Gate Nodes identifiziert und der abstrakte Graph mit vorberechneten Kantengewichten konstruiert. Das Ergebnis dieser Phase, der abstrakte Graph zusammen mit den notwendigen Metadaten, wird in einer SQLite-Datenbank persistiert. SQLite eignet sich hier, weil es eine leichtgewichtige, serverlose Datenbanklösung darstellt, die ohne Konfigurationsaufwand auskommt und die Persistenz des vorberechneten Graphen sicherstellt. Der kostspielige Build-Prozess muss so nur einmal ausgeführt werden und steht danach dauerhaft zur Verfügung.
+In der Query-Phase wird eine Pfadanfrage von Startknoten S nach Zielknoten T wie folgt verarbeitet: A\* läuft zunächst auf dem Basisgraphen, bis ein Gate Node erreicht wird. Ab diesem Punkt wechselt die Suche auf den abstrakten Graphen und läuft dort weiter, bis der Gate Node des Zielclusters erreicht ist. Damit sind Start-Cluster, Ziel-Cluster und alle dazwischen liegenden Cluster sowie die verwendeten Gate Nodes bekannt. Im abschließenden Refinement-Schritt wird A\* innerhalb jedes berührten Clusters separat ausgeführt, um den konkreten Pfad auf dem Basisgraphen zu rekonstruieren.
