@@ -47,9 +47,7 @@
   abstract-ge: [
     #include "./chapters/abstract.typ"
     #todo(
-      [TODO: Die Kurzfassung sollte das gesamte Werk enthalten, also das spannende
-        Problem, den gewählten – neuartigen – Lösungsansatz und natürlich vor allem die
-        erreichten Resultate.],
+      [TODO: Die Kurzfassung],
     )
   ],
   after-title: [
