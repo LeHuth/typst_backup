@@ -38,7 +38,7 @@ Die Erstellung der Hierarchie erfolgt in einer einmaligen Build-Phase. Der Graph
 Die Vorberechnung aller Kantengewichte im abstrakten Graphen hat eine Komplexität von O(k² · A\*) pro Cluster, wobei k die Anzahl der Gate Nodes pro Cluster bezeichnet. In dicht besiedelten Regionen kann ein Cluster eine erhebliche Anzahl an Gate Nodes aufweisen, was die Vorberechnungskosten entsprechend erhöht. Produktionssysteme begegnen diesem Problem durch gezielte Gate-Selektion, die nur die relevantesten Übergänge zwischen Clustern berücksichtigt [Zitat: OsmAnd 2025].
 Zur Anfragezeit wird zunächst mit A\* vom Startpunkt zum nächsten Gate des eigenen Clusters navigiert. Anschließend wird A\* auf dem abstrakten Graphen ausgeführt, wobei die durchlaufenen Cluster gespeichert werden. Nach Erreichen des Zielclusters wird erneut auf die untere Abstraktionsebene gewechselt und mit A\* zum Zielknoten navigiert. Abschließend wird für jeden durchlaufenen Cluster A\* vom Entry Gate zum Exit Gate ausgeführt, um den vollständigen Pfad zu rekonstruieren [Zitat: Botea et al. 2004].
 
-== Network Voronoi
+== Network Voronoi <voronoi-clustering>
 
 == OpenStreetMap als Datenbasis
 
@@ -47,7 +47,7 @@ Das OSM-Datenmodell basiert auf drei Grundelementen. Nodes sind einzelne Punkte 
 Zur Abfrage und Verarbeitung der OSM-Daten wird in dieser Arbeit die Python-Bibliothek osmnx verwendet [Zitat: Boeing 2017 — TODO: osmnx Paper suchen]. Über die Funktion graph_from_point() wird ein Graph anhand eines Mittelpunkts, eines Radius und eines Netzwerktyps abgefragt. Als Netzwerktyp wird network_type="bike" verwendet, wodurch ausschließlich das für Fahrräder befahrbare Straßennetz geladen wird. Das Ergebnis ist ein networkx MultiDiGraph — ein gerichteter Graph der mehrere parallele Kanten zwischen denselben Knoten erlaubt, was notwendig ist da Straßenabschnitte in unterschiedlichen Richtungen verschiedene Eigenschaften besitzen können.
 Standardmäßig vereinfacht osmnx den Graphen mit simplify=True: Knoten die lediglich geometrische Wegpunkte auf geraden Straßen darstellen und keine echten Kreuzungen repräsentieren, werden entfernt und die zugehörigen Kanten direkt verbunden. Dies reduziert die Graphgröße erheblich ohne die topologische Struktur des Netzwerks zu verändern. Der resultierende Graph wird im GraphML-Format lokal gespeichert, um wiederholte Abfragen der OSM-Server zu vermeiden.
 
-== Koordinatensysteme 
+== Koordinatensysteme <koordinatensysteme>
 
 Geografische Daten können in unterschiedlichen Koordinatensystemen repräsentiert werden, die je nach Anwendungsfall unterschiedliche Vor- und Nachteile aufweisen.
 OSM-Daten werden standardmäßig im WGS84-Referenzsystem gespeichert [Zitat: Haklay & Weber 2008]. WGS84 ist ein sphärisches Koordinatensystem das Positionen auf der Erdoberfläche durch Längen- und Breitengrade beschreibt. Es ist der weltweite Standard für GPS- und Navigationssysteme. Da WGS84 auf einem Ellipsoid basiert, sind direkte euklidische Distanzberechnungen zwischen zwei Koordinatenpaaren nicht möglich — ein Grad Längengrad entspricht in Berlin einer anderen Distanz als am Äquator.

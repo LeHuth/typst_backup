@@ -28,24 +28,3 @@ Produktionssysteme wie OsmAnd verwenden deutlich aufwändigere Ansätze @OsmAnd:
 Auf den Einsatz einer Geodatenbank zur räumlichen Abfrage des nächsten OSM-Knotens zu einem Seedpunkt wurde verzichtet, da der Seed-Mapping-Schritt einmalig im Preprocessing erfolgt und somit keinen Einfluss auf die Laufzeitperformance der eigentlichen Suchalgorithmen hat.
 Darüber hinaus werden folgende Aspekte explizit nicht untersucht: mehrere Hierarchieebenen sowie dynamische Graphen. Als Datenbasis dient ausschließlich das Fahrradnetz der verwendeten OSM-Karte, da dieses eine strukturell simplere Variante des Gesamtgraphen darstellt. Im Preprocessing werden zudem Sackgassen — etwa Einfahrten und Stichstraßen — aus dem Graphen entfernt, um unnötige Suchschritte zu vermeiden.
 
-#todo(
-  [
-    Describe your structured, academic approach to find — and evaluate — a solution.
-    When you needed (large) data sets for you work, explain how you collected and
-    filtered raw data. For the validation (see Section Evaluation 6) you want to
-    describe the criteria for objective measurement.
-  ],
-)
-
-#todo(
-  [
-    #v(3cm)
-    Note the so called "*Roter Faden*": At the end of one chapter you might sum up
-    the content. Then you give an outlook on the next chapter. For example, at the
-    end of the introduction you might start the text with:
-
-    _The remainder of the thesis is structured as follows:_
-    _The implementation is presented in @implementation (including the backend
-    @backend and the frontend @frontend). The evaluation ... ..._
-  ],
-)

@@ -85,14 +85,14 @@
 #include "./chapters/5-implementation.typ"
 #pagebreak()
 
-#include "./chapters/6-evaluation.typ"
-#pagebreak()
+//#include "./chapters/6-evaluation.typ"
+//#pagebreak()
 
-#include "./chapters/7-conclusion.typ"
-#pagebreak()
+//#include "./chapters/7-conclusion.typ"
+//#pagebreak()
 
-#include "./chapters/glossary.typ"
-#pagebreak()
+//#include "./chapters/glossary.typ"
+//#pagebreak()
 
 // Appendix (optional)
 //    Will appear BEFORE the Bibliograhy and after the Glossary.

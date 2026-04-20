@@ -173,7 +173,7 @@ long }
   // keep links in black with
   link-color: blue.darken(60%),
   // font size for body text (default: 11pt)
-  font-size: 11pt,
+  font-size: 13pt,
   // when creating hard-copies
   // you might want to set left/right bindings to 'left'
   // and margins differently (e.g. inside to '9em' and outside to '6em')
