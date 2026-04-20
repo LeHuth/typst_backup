@@ -172,6 +172,8 @@ long }
   show-list-of: ("listings", "tables", "equations", "figures"),
   // keep links in black with
   link-color: blue.darken(60%),
+  // font size for body text (default: 11pt)
+  font-size: 11pt,
   // when creating hard-copies
   // you might want to set left/right bindings to 'left'
   // and margins differently (e.g. inside to '9em' and outside to '6em')
@@ -619,6 +621,7 @@ long }
 
   // Some more global settings:
   set align(left) // align text left (i.e. no longer centered)
+  set text(size: font-size) // body text font size
   set par(justify: true) // text as block (German: Blocksatz)
 
   //add more vertical space between text and start of figures

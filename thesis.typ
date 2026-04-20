@@ -33,6 +33,7 @@
   //   swd ... Software Design & Cloud Computing (VZ) (see https://www.fh-joanneum.at/itm)
   //   swd ... Software Design & Cloud Computing (BB) (see https://www.fh-joanneum.at/swd)
   //   msd ... Mobile Software Development (see https://www.fh-joanneum.at/msd)
+  font-size: 13pt,
   study: "mi", // ims, irm, swd, msd
   // For study programme "ims" the language is required to be in English
   language: "de", // en, de
