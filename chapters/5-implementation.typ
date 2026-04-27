@@ -46,16 +46,24 @@ OSMnx liefert das Netzwerk als gerichteten Multigraphen vom Typ networkx.MultiDi
 === Caching
 
 Um wiederholte Anfragen an die Overpass-API zu vermeiden, persistiert die Anwendung den geladenen Graphen beim ersten Abruf als GraphML-Datei unter data/graph.graphml. Bei späteren Serverstarts wird der Graph aus diesem Cache geladen, sofern die Datei vorhanden und nicht leer ist. Listing 5.1 zeigt die hierfür zuständige Klasse Osm.
+
 #show figure: set block(breakable: true)
+#show figure.where(kind: raw): it => block(spacing: 0em, breakable: true)[
+  #it.body
+  #v(0.4em)
+  #it.caption
+]
 #figure(
   caption: [Wrapper-Klasse für die Beschaffung und Persistenz des OSM-Graphen.],
   kind: raw,
 )[
 #set par(spacing: 0em)
-#codly( languages: codly-languages, 
-        zebra-fill: none,
-        header: [Osm.py],
-        number-format: none,
+#set block(above: 0em, below: 0em)
+#set text(bottom-edge: "descender")
+#codly( languages: codly-languages,
+        display-icon: false,
+        display-name: false,
+        inset: (x: 0em, y: 0em),
       )
 ```python
 class Osm:
