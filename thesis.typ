@@ -6,6 +6,8 @@
 // (or macros are defined)
 // which are used within all the chapters:
 #import "chapters/global.typ": *
+#import "@preview/codly:1.3.0": *
+#import "@preview/codly-languages:0.1.1": *
 
 // Definitions for the glossary must be defined (i.e. registered)
 // before the main document is processed

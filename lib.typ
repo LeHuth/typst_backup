@@ -380,7 +380,7 @@ long }
     #set text(size: 18pt)
     #block[
       #v(0.5cm)
-      #par(hanging-indent: 1.6em)[
+      #par(hanging-indent: 0.6em)[
         #counter(heading).display()
         #it.body
       ]
