@@ -45,59 +45,110 @@ OSMnx liefert das Netzwerk als gerichteten Multigraphen vom Typ networkx.MultiDi
 
 === Caching
 
-Um wiederholte Anfragen an die Overpass-API zu vermeiden, persistiert die Anwendung den geladenen Graphen beim ersten Abruf als GraphML-Datei unter data/graph.graphml. Bei späteren Serverstarts wird der Graph aus diesem Cache geladen, sofern die Datei vorhanden und nicht leer ist. Listing 5.1 zeigt die hierfür zuständige Klasse Osm.
+Um wiederholte Anfragen an die Overpass-API zu vermeiden, persistiert die Anwendung den geladenen Graphen beim ersten Abruf als GraphML-Datei unter data/graph.graphml. Bei späteren Serverstarts wird der Graph aus diesem Cache geladen, sofern die Datei vorhanden und nicht leer ist. Listing 5.1 zeigt die hierfür zuständige Klasse Osm. 
 
-#show figure: set block(breakable: true)
-#show figure.where(kind: raw): it => block(spacing: 0em, breakable: true)[
-  #it.body
-  #v(0.4em)
-  #it.caption
-]
 #figure(
-  caption: [Wrapper-Klasse für die Beschaffung und Persistenz des OSM-Graphen.],
-  kind: raw,
-)[
-#set par(spacing: 0em)
-#set block(above: 0em, below: 0em)
-#set text(bottom-edge: "descender")
-#codly( languages: codly-languages,
-        display-icon: false,
-        display-name: false,
-        inset: (x: 0em, y: 0em),
-      )
-```python
-class Osm:
-    FILE_PATH = Path("data/graph.graphml")
+  align(
+    left,
+    fhjcode(code: read("/code-snippets/osm.py"), lastline: 33),
+  ),
+  caption: flex-caption(
+    [Wrapper-Klasse für die Beschaffung und Persistenz des OSM-Graphen],[]
+  ),
+) <lst:osm_wrapper>
 
-    def __init__(self, latitude, longitude, distance, graph_type="bike"):
-        self.latitude = latitude
-        self.longitude = longitude
-        self.distance = distance
-        self.graph_type = graph_type
-        self.graph = nx.MultiDiGraph()
+== A\*-Algorithmus
 
-    def get_graph(self):
-        if self.load_graph():
-            return self.graph
-        self.graph = ox.graph.graph_from_point(
-            center_point=(self.latitude, self.longitude),
-            network_type=self.graph_type,
-            dist=self.distance)
-        self.save_osm_graph()
-        return self.graph
+Die Implementierung des A\*-Algorithmus (siehe Abschnitt 2.2.2) erfolgt in der Klasse AStarPathfinder und kapselt sowohl die eigentliche Pfadsuche als auch die für die spätere Auswertung benötigte Erfassung von Laufzeit- und Strukturmetriken. Der Fokus dieses Abschnitts liegt auf den konkreten Implementierungsentscheidungen; eine erneute formale Darstellung des Algorithmus erfolgt nicht.
 
-    def load_graph(self):
-        p = self.FILE_PATH
-        if not p.exists() or p.stat().st_size == 0:
-            return False
-        try:
-            self.graph = ox.load_graphml(str(p))
-            return True
-        except Exception:
-            return False
+=== Heuristik
+Als Heuristik wird die Haversine-Distanz zwischen zwei Knoten in Metern verwendet. Die Funktion bezieht ihre Eingaben aus den Knotenattributen x (Längengrad) und y (Breitengrad), die OSMnx beim Laden des Graphen vergibt. 
+#figure(
+  align(
+    left,
+    fhjcode(code: read("/code-snippets/haversine_distance.py"), lastline: 20),
+  ),
+  caption: flex-caption(
+    [Haversine-Distanz als A\*-Heuristik],[]
+  ),
+) <lst:parallele_kanten>
 
-    def save_osm_graph(self):
-        self.FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        ox.save_graphml(self.graph, filepath=str(self.FILE_PATH))
-```
-]
+\
+Die Wahl der Haversine-Distanz gegenüber der euklidischen Distanz auf einer projizierten Ebene ist eine bewusste Entscheidung. Die in Abschnitt 2.2.2 dargestellte Optimalitätsgarantie von A\* setzt eine zulässige Heuristik voraus, die die tatsächliche Restdistanz zum Ziel niemals überschätzt. Die Haversine-Distanz erfüllt diese Eigenschaft global auf der Erdoberfläche, da sie die Großkreisdistanz zwischen zwei Punkten liefert und damit eine untere Schranke für jede mögliche Routenlänge entlang des Straßennetzes darstellt. Eine Projektion in ein lokales Koordinatensystem wie UTM (siehe Abschnitt 2.6) führt hingegen mit zunehmendem Abstand vom Bezugsmeridian zu Verzerrungen, die im Einzelfall zur Überschätzung der Restdistanz führen können. Da A\* auf dem unprojizierten OSM-Graphen operiert, in dem Knotenkoordinaten als geographische Koordinaten vorliegen, vermeidet die Verwendung der Haversine-Distanz zudem eine zusätzliche Projektionsschicht und behält die Zulässigkeit der Heuristik unter allen Bedingungen bei.
+
+=== Datenstrukturen
+
+Die Open Set wird als binärer Min-Heap über Tupel der Form (f_score, node_id) realisiert, implementiert mit Pythons heapq-Modul. Das Modul stellt Push- und Pop-Operationen in O(log n) bereit. Eine Decrease-Key-Operation, wie sie in der lehrbuchüblichen Beschreibung von A\* (etwa bei Cormen et al., 2009) angenommen wird, unterstützt heapq nicht direkt. Stattdessen wird die als Lazy Deletion bekannte Variante umgesetzt: Wird ein Knoten über einen kürzeren Pfad erreicht, fügt die Implementierung ihn erneut mit dem niedrigeren f-Wert in den Heap ein, ohne den veralteten Eintrag zu entfernen. Beim Pop prüft eine Wächter-Bedingung, ob der entnommene Knoten bereits in der Closed Set vorhanden ist; trifft das zu, wird der Eintrag verworfen. Diese Variante erhöht zwar den Speicherbedarf des Heaps gegenüber einer echten Decrease-Key-Implementierung, liegt asymptotisch jedoch in derselben Komplexitätsklasse und ist in der Praxis deutlich einfacher zu implementieren.
+Drei weitere Datenstrukturen begleiten die Hauptschleife. Das Dictionary g_score speichert für jeden bisher erreichten Knoten die Länge des kürzesten bekannten Pfades vom Startknoten. Das Dictionary came_from hält die Eltern-Beziehung jedes erreichten Knotens für die spätere Pfadrekonstruktion. Die Menge closed_set markiert Knoten, deren endgültige Distanz bereits feststeht und die nicht erneut expandiert werden.
+
+=== Behandlung paralleler Kanten
+
+Da OSMnx den Graphen als networkx.MultiDiGraph zurückgibt, können zwischen zwei Knoten mehrere parallele gerichtete Kanten existieren, etwa durch separat erfasste Fahrradspuren oder Fahrtrichtungs-Varianten. Die Methode get_edge_weight löst diese Mehrdeutigkeit auf, indem sie unter allen vorhandenen Kanten die mit der geringsten Länge auswählt:
+
+#figure(
+  align(
+    left,
+    // we use a custom template (style), defined in fh.typ
+    // the files are expected in subfolder "source"
+    // optionally, specify firstline/lastline
+    fhjcode(code: read("/code-snippets/get_edge_weight.py"), lastline: 9),
+  ),
+  // we use a custom flex-caption), to allow long and short captions
+  // (the short one appears in the outline List of Figures).
+  // This is defined in `lib.typ`.
+  caption: flex-caption(
+    [Auflösung paralleler Kanten in A\*],[]
+  ),
+) <lst:parallele_kanten>
+\
+
+Diese Wahl ist konsistent mit dem Ziel des Algorithmus. A\* sucht den kürzesten Pfad; existieren zwischen zwei Knoten mehrere Verbindungen, ist für die Optimalitätsgarantie nur die kürzeste relevant. Eine Auswahl der ersten Kante (Reihenfolge der Speicherung im MultiDiGraph) oder eines Mittelwertes wäre nicht nur weniger sinnvoll, sondern könnte im Extremfall zur Auswahl suboptimaler Pfade führen.
+
+=== Hauptschleife
+
+Die Hauptschleife folgt der lehrbuchüblichen Struktur von A\*, ist jedoch als Python-Generator umgesetzt. Nach jedem Expansionsschritt yieldet die Methode einen Zustands-Dictionary, der den aktuellen Knoten, dessen Koordinaten, die zugehörigen f- und g-Werte sowie die laufenden Statistiken enthält. Im Anschluss werden alle Nachbarn des entnommenen Knotens betrachtet; für jeden verbesserten Pfad wird ein zusätzlicher Zustand vom Typ exploring ausgegeben. 
+
+#figure(
+  align(
+    left,
+    fhjcode(code: read("/code-snippets/a_star_loop.py"), lastline: 34),
+  ),
+  caption: flex-caption(
+    [Kern der A\*-Hauptschleife],[]
+  ),
+) <lst:parallele_kanten>
+\
+Die Generator-Form bringt zwei Vorteile mit sich, die in Abschnitt 5.1 bereits skizziert wurden. Erstens bleibt die Algorithmusimplementierung frei von Annahmen über die spätere Verwendung der Zwischenzustände; das WebSocket-Streaming, der nicht-streamende REST-Aufruf und der Benchmark-Adapter konsumieren denselben Generator. Zweitens lassen sich die ausgegebenen Zustände direkt für die Live-Visualisierung im Frontend nutzen, ohne dass der Algorithmus selbst Kenntnis vom Übertragungsweg haben muss.
+
+=== Pfadrekonstruktion
+
+Wird der Zielknoten aus der Open Set entnommen, rekonstruiert die Methode reconstruct_path den Pfad rückwärts über das came_from-Dictionary. Anschließend wandelt get_path_coordinates die Knoten-IDs in Lat/Lon-Tupel um, die das Frontend als GeoJSON-LineString rendern kann.
+
+#figure(
+  align(
+    left,
+    fhjcode(code: read("/code-snippets/reconstruct_path.py"), lastline: 6),
+  ),
+  caption: flex-caption(
+    [Rückwärts-Rekonstruktion des Pfades aus der Eltern-Beziehung.],[]
+  ),
+) <lst:parallele_kanten>
+
+=== Erfassung von Laufzeitmetriken
+Für die spätere Auswertung in Kapitel 7 erfasst die Implementierung sechs Metriken pro Pfadanfrage und gibt sie in jedem Generator-Yield im Feld stats mit aus. Tabelle 5.1 fasst die erhobenen Größen und ihre Bedeutung zusammen.
+#figure(
+caption: [Erfasste Laufzeitmetriken pro A\*-Anfrage.],
+table(
+columns: (auto, 1fr),
+align: (left, left),
+table.header[Metrik][Bedeutung],
+[visited_nodes_count], [Anzahl Knoten, die endgültig aus der Open Set entnommen und expandiert wurden.],
+[explored_edges_count], [Anzahl Kantenrelaxierungen, also Auswertungen der Methode get_edge_weight.],
+[heap_pushes], [Anzahl Push-Operationen auf den Min-Heap. Übersteigt potenziell visited_nodes_count aufgrund der Lazy-Deletion-Variante.],
+[heap_pops], [Anzahl Pop-Operationen auf den Min-Heap.],
+[max_open_set_size], [Maximale Größe der Open Set während der Suche, als Indikator für den Speicherbedarf.],
+[runtime_ms], [Zeit zwischen Methodenstart und aktuellem Yield in Millisekunden, gemessen mit time.perf_counter.],
+),
+)
+Diese Granularität erlaubt es, in der Auswertung nicht nur die Gesamtlaufzeit zu vergleichen, sondern auch zwischen den Komponenten zu differenzieren, die zur Laufzeit beitragen, etwa zwischen Suchraumgröße (visited_nodes_count) und Heap-Verwaltungsaufwand (heap_pushes und heap_pops).
+#todo("Kapitel 7: Stats systematisch über alle Algorithmen und Ausschnitte aggregieren und visualisieren.")
