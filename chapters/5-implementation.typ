@@ -152,3 +152,49 @@ table.header[Metrik][Bedeutung],
 )
 Diese Granularität erlaubt es, in der Auswertung nicht nur die Gesamtlaufzeit zu vergleichen, sondern auch zwischen den Komponenten zu differenzieren, die zur Laufzeit beitragen, etwa zwischen Suchraumgröße (visited_nodes_count) und Heap-Verwaltungsaufwand (heap_pushes und heap_pops).
 #todo("Kapitel 7: Stats systematisch über alle Algorithmen und Ausschnitte aggregieren und visualisieren.")
+
+== Hierarchisches Pathfinding mit HPA\*
+Die in dieser Arbeit implementierte Variante des Hierarchical Pathfinding A\* (HPA\*) folgt dem Grundgerüst von Botea et al. @Botea:2004 und überträgt es auf die spezifischen Eigenschaften eines OSM-Straßennetzes. Sie weicht in zwei Punkten vom ursprünglichen Vorschlag ab. Erstens werden die abstrakten Knoten nicht als Paare aus Entry- und Exit-Punkten pro Cluster-Border modelliert, sondern jeder Border-Knoten ist ein einzelner abstrakter Knoten, der zugleich Exit für den einen und Entry für das benachbarte Cluster darstellt. Zweitens erfolgt die Cluster-Bildung nicht über das in @Botea:2004 verwendete reguläre Gitter, das ein dichtes Grid voraussetzt, sondern über eine Network-Voronoi-Partitionierung des Graphen, da OSM-Straßennetze keine gitterartige Struktur besitzen (siehe Abschnitt 2.4). Beide Adaptionen werden in den folgenden Unterabschnitten begründet.
+=== Übersicht der drei Phasen
+Die Implementierung verteilt die Arbeit auf eine einmalige Vorberechnung beim Start und eine Query-Phase pro Pfadanfrage. Die Vorberechnung umfasst zwei Schritte: die Network-Voronoi-Partitionierung des Graphen (Abschnitt 5.4.2) und die Konstruktion des abstrakten Graphen (Abschnitt 5.4.3). Die Query-Phase besteht aus der abstrakten A\*-Suche über dem Gate-Graphen (Abschnitt 5.4.4) und der anschließenden Verfeinerung der gefundenen Gate-Sequenz zu einem konkreten OSM-Pfad (Abschnitt 5.4.5).
+Die Trennung in Vorberechnung und Query ist die zentrale Idee hierarchischer Pathfinding-Verfahren: Aufwand, der einmal anfällt, wird aus der Query-Schleife herausgezogen, sodass jede einzelne Pfadanfrage von einer reduzierten Suchraumgröße profitiert. Für eine Anwendung mit statischem Straßennetz, wie sie hier untersucht wird, ist diese Aufteilung uneingeschränkt vorteilhaft. Eine Diskussion der Folgen für dynamische Szenarien findet sich in Kapitel 8.
+=== Network-Voronoi-Clustering
+Die Cluster-Bildung erfolgt in der Klasse RegionGrow und basiert auf einem Multi-Source-Dijkstra-Lauf, der von einem regelmäßigen Gitter aus Seed-Punkten ausgeht. Das Verfahren gliedert sich in drei Schritte.
+Zunächst wird der OSM-Graph in das lokale UTM-Koordinatensystem projiziert (siehe Abschnitt 2.6). Über die Bounding-Box des projizierten Graphen wird ein gleichmäßiges ntimesnn times n
+ntimesn-Gitter aus Seed-Punkten gelegt, wobei nn
+n über den Parameter grid_size konfigurierbar ist. Anschließend wird jeder Gitter-Punkt auf den nächstgelegenen OSM-Knoten abgebildet. Die Projektion in UTM ist hierbei ausschließlich für die Konstruktion des Gitters notwendig und beeinflusst weder die Distanzberechnung noch die nachfolgende Pfadsuche.
+
+#figure(
+  align(
+    left,
+    fhjcode(code: read("/code-snippets/create_seed_nodes.py"), lastline: 8),
+  ),
+  caption: flex-caption(
+    [Erzeugung der Seed-Knoten aus einem regelmäßigen Gitter über der Bounding-Box],[]
+  ),
+) <lst:create-seed-nodes>
+\
+
+Die abschließende Deduplizierung über dict.fromkeys ist notwendig, da auf einem realen Straßennetz mehrere Gitterpunkte auf denselben OSM-Knoten abgebildet werden können, insbesondere in dünn besiedelten Bereichen mit weiten Abständen zwischen den Knoten. Die tatsächliche Anzahl der Seeds liegt dadurch in der Regel unter n2n^2
+n2.
+Im zweiten Schritt expandiert ein Multi-Source-Dijkstra-Lauf von allen Seeds gleichzeitig. Die Priority Queue wird initial mit allen Seeds bei Distanz 0 belegt; jeder Heap-Eintrag trägt zusätzlich die ID des Seeds, von dem aus der Knoten erreicht wurde. Sobald ein Knoten zum ersten Mal aus der Queue entnommen wird, wird er endgültig demjenigen Seed zugeordnet, der ihn erreicht hat. Da Dijkstra optimal ist, entspricht diese Zuordnung garantiert dem nach Straßennetz-Distanz nächstgelegenen Seed. Das Ergebnis ist eine Network-Voronoi-Partition des Graphen, also die diskrete Variante eines Voronoi-Diagramms, in der die Distanzfunktion nicht der euklidischen Metrik, sondern der Kantenlänge entlang des Graphen folgt (siehe Abschnitt 2.4).
+
+#figure(
+  align(
+    left,
+    fhjcode(code: read("/code-snippets/core_msd.py"), lastline: 119),
+  ),
+  caption: flex-caption(
+    [Erzeugung der Seed-Knoten aus einem regelmäßigen Gitter über der Bounding-Box],[]
+  ),
+) <lst:create-seed-nodes>
+\
+
+Eine Designentscheidung dieses Schritts betrifft die Behandlung von Einbahnstraßen. Der OSM-Graph ist als gerichteter Multigraph (MultiDiGraph) modelliert, in dem Einbahnstraßen entsprechend nur in einer Richtung passierbar sind. Für die Voronoi-Partitionierung wird der Graph jedoch durch die Methode to_undirected() zu einem ungerichteten Graphen reduziert. Dieser Schritt ist gerechtfertigt, weil die Voronoi-Zugehörigkeit eines Knotens eine räumliche Eigenschaft ist und keine routenabhängige Größe. Würde die Partitionierung Einbahnstraßen respektieren, könnten sich entlang asymmetrischer Straßen ungewollt streifenartige Cluster bilden, die nicht der geographischen Nachbarschaft entsprechen. Da die Partitionierung ausschließlich der Strukturierung des Suchraums dient und nicht der Vorberechnung von Routen, ist die Reduktion auf den ungerichteten Graphen unkritisch.
+Das Ergebnis der Cluster-Bildung wird in einem Dictionary zurückgegeben, das vier Werte enthält: die Cluster selbst (clusters als Mapping von Seed-Knoten auf Knotenliste), die inverse Zuordnung (node_region als Mapping von Knoten auf Seed), die Liste der Seeds (seed_nodes) sowie die Distanz jedes Knotens zu seinem Seed (dist). Diese vier Strukturen bilden die Eingabe für die HPA\*-Konstruktion.
+
+=== Konstruktion des abstrakten Graphen
+
+Auf Grundlage der Voronoi-Partition konstruiert die Klasse HPAStarPathfinder in der Methode build_abstract_graph einen abstrakten Graphen, dessen Knoten und Kanten die Cluster-Struktur explizit machen. Die Konstruktion folgt der in @Botea:2004 vorgeschlagenen Struktur, weicht jedoch in der Modellierung der Gate-Knoten ab.
+In der ursprünglichen Variante von HPA\* werden für jede Cluster-Border zwei abstrakte Knoten eingeführt, einer für den Eintritt in das eine Cluster und einer für den Austritt in das benachbarte. Diese Verdopplung ist sinnvoll für gitterbasierte Karten mit breiten Border-Bereichen, in denen sich Entry- und Exit-Punkt geographisch unterscheiden können. Auf einem OSM-Straßennetz hingegen ist die Cluster-Border keine flächige Region, sondern eine einzelne Kante zwischen zwei Knoten in unterschiedlichen Clustern. Die Verdopplung wäre hier inhaltsleer; jeder OSM-Knoten, der Endpunkt einer cluster-überschreitenden Kante ist, wird daher als ein einzelner abstrakter Knoten modelliert und übernimmt sowohl die Rolle des Exits aus seinem eigenen Cluster als auch die des Entries für das benachbarte.
+Die Konstruktion läuft in zwei Durchgängen. Im ersten Durchgang werden alle Kanten des OSM-Graphen daraufhin geprüft, ob sie zwischen Knoten verschiedener Cluster verlaufen. Trifft das zu, werden beide Endpunkte als abstrakte Knoten registriert und durch eine Inter-Cluster-Kante mit dem Gewicht der OSM-Kantenlänge verbunden. Gleichzeitig werden die Endpunkte den Exit- und Entry-Listen ihrer jeweiligen Cluster hinzugefügt.
