@@ -4,14 +4,14 @@
 #show: codly-init.with()
 = Implementation <implementation>
 
-== Systemarchitektur
+== Systemarchitektur <sec:architektur>
 
-Die in dieser Arbeit entwickelte Anwendung ist als verteiltes System mit drei voneinander entkoppelten Schichten realisiert: einer Algorithmik- und Datenschicht im Backend, einer interaktiven Visualisierungsschicht im Frontend sowie einer relationalen Datenbank zur Persistenz von Benchmark-Ergebnissen. Diese Trennung verfolgt zwei Ziele. Zum einen erlaubt sie eine unabhängige Weiterentwicklung der einzelnen Komponenten — etwa den Austausch oder die Erweiterung der Pathfinding-Algorithmen ohne Eingriff in die Visualisierung. Zum anderen ermöglicht sie eine plattformunabhängige interaktive Demonstration des Algorithmenverhaltens über jeden modernen Webbrowser, ohne dass auf der Bewertungsumgebung eine GUI-Toolchain installiert werden muss.
+Die in dieser Arbeit entwickelte Anwendung ist als verteiltes System mit drei voneinander entkoppelten Schichten realisiert: einer Algorithmik- und Datenschicht im Backend, einer interaktiven Visualisierungsschicht im Frontend sowie einer relationalen Datenbank zur Persistenz von Benchmark-Ergebnissen. Diese Trennung verfolgt zwei Ziele. Zum einen erlaubt sie eine unabhängige Weiterentwicklung der einzelnen Komponenten, etwa den Austausch oder die Erweiterung der Pathfinding-Algorithmen ohne Eingriff in die Visualisierung. Zum anderen ermöglicht sie eine plattformunabhängige interaktive Demonstration des Algorithmenverhaltens über jeden modernen Webbrowser, ohne dass auf der Bewertungsumgebung eine GUI-Toolchain installiert werden muss.
 
 === Technologieauswahl
 
-Das Backend ist in Python 3.11 unter Verwendung von FastAPI implementiert. FastAPI wurde gewählt, weil es nativ asynchrone Endpunkte und WebSocket-Verbindungen unterstützt. Letztere sind zentral für eine der Kernanforderungen der Anwendung: die schrittweise Live-Visualisierung des Suchprozesses, nicht nur des Endergebnisses. Über REST allein ließe sich diese Anforderung nicht erfüllen, da REST per Definition ein Anfrage-Antwort-Modell ohne serverseitiges Streaming vorsieht. Als Bibliothek für die Graphenrepräsentation und -manipulation kommt NetworkX @hagberg2008 zum Einsatz. Die Wahl ergibt sich primär aus der direkten Interoperabilität mit OSMnx, das OSM-Netzwerke nativ als networkx.MultiDiGraph zurückgibt und damit eine zusätzliche Konvertierungsschicht vermeidet. Die Anbindung an das OpenStreetMap-Ökosystem erfolgt über OSMnx, das die Beschaffung und Aufbereitung von OSM-Straßennetzen kapselt (siehe Abschnitt 4.2).
-Das Frontend basiert auf Nuxt 4 (Vue 3) und nutzt Leaflet.js für die Kartendarstellung. Als Datenbank dient PostgreSQL 16, angesteuert über den asynchronen Treiber asyncpg, der sich nahtlos in den Async-Stack von FastAPI einfügt. Die Wahl von PostgreSQL gegenüber einer eingebetteten Lösung wie SQLite begründet sich primär durch die einheitliche Containerisierung (alle Dienste werden über Docker Compose orchestriert, siehe Abschnitt 4.9) und sekundär durch die Erweiterungsmöglichkeit auf PostGIS, falls in zukünftiger Arbeit raumbezogene Anfragen — etwa die Zuordnung von Seed-Punkten zu OSM-Knoten über Spatial Indexes — direkt in der Datenbank ausgeführt werden sollen.
+Das Backend ist in Python 3.11 unter Verwendung von FastAPI implementiert. FastAPI wurde gewählt, weil es nativ asynchrone Endpunkte und WebSocket-Verbindungen unterstützt. Letztere sind zentral für eine der Kernanforderungen der Anwendung: die schrittweise Live-Visualisierung des Suchprozesses, nicht nur des Endergebnisses. Über REST allein ließe sich diese Anforderung nicht erfüllen, da REST per Definition ein Anfrage-Antwort-Modell ohne serverseitiges Streaming vorsieht. Als Bibliothek für die Graphenrepräsentation und -manipulation kommt NetworkX @hagberg2008 zum Einsatz. Die Wahl ergibt sich primär aus der direkten Interoperabilität mit OSMnx, das OSM-Netzwerke nativ als networkx.MultiDiGraph zurückgibt und damit eine zusätzliche Konvertierungsschicht vermeidet. Die Anbindung an das OpenStreetMap-Ökosystem erfolgt über OSMnx, das die Beschaffung und Aufbereitung von OSM-Straßennetzen kapselt (siehe Abschnitt 5.2).
+Das Frontend basiert auf Nuxt 4 (Vue 3) und nutzt Leaflet.js für die Kartendarstellung. Als Datenbank dient PostgreSQL 16, angesteuert über den asynchronen Treiber asyncpg, der sich nahtlos in den Async-Stack von FastAPI einfügt. Die Wahl von PostgreSQL gegenüber einer eingebetteten Lösung wie SQLite begründet sich primär durch die einheitliche Containerisierung (alle Dienste werden über Docker Compose orchestriert, siehe Abschnitt 5.9) und sekundär durch die Erweiterungsmöglichkeit auf PostGIS, falls in zukünftiger Arbeit raumbezogene Anfragen wie etwa die Zuordnung von Seed-Punkten zu OSM-Knoten über Spatial Indexes direkt in der Datenbank ausgeführt werden sollen.
 
 === Generator-basierte Algorithmusarchitektur
 
@@ -22,16 +22,16 @@ Eine zentrale Designentscheidung des Backends ist die Implementierung der Pathfi
 Das Backend nutzt den FastAPI-Lifespan-Kontextmanager zur einmaligen Initialisierung beim Serverstart. Die Startsequenz umfasst sechs Schritte: 
 + Laden des OSM-Graphen aus dem lokalen Cache oder, falls nicht vorhanden, Live-Bezug über die Overpass-API
 + Initialisierung des A\*-Pathfinders über dem geladenen Graphen
-+ Berechnung der Network-Voronoi-Partitionierung des Graphen mittels Multi-Source-Dijkstra (siehe Abschnitt 4.4.1)
++ Berechnung der Network-Voronoi-Partitionierung des Graphen mittels Multi-Source-Dijkstra (siehe Abschnitt 5.4.2)
 + Vorberechnung der Visualisierungs-GeoJSONs für Cluster, Gates und Seeds
-+ Konstruktion des abstrakten Graphen für HPA\* (siehe Abschnitt 4.4.2) inklusive Vorberechnung aller Intra-Cluster-Distanzen
++ Konstruktion des abstrakten Graphen für HPA\* (siehe Abschnitt 5.4.3) inklusive Vorberechnung aller Intra-Cluster-Distanzen
 + optionaler Aufbau des Datenbank-Connection-Pools, sofern die Umgebungsvariable DATABASE_URL gesetzt ist.
 
-Die Anwendung läuft auch ohne Datenbankanbindung; in diesem Fall stehen lediglich die Benchmark-Persistenz-Endpunkte nicht zur Verfügung. Diese verzögerte Konstruktion sämtlicher Datenstrukturen beim Start ist gerechtfertigt, weil die Arbeit auf einen statischen Graphen ausgerichtet ist und alle Vorberechnungen damit nur einmal pro Serverstart anfallen — eine Konstellation, die für einen produktiven Routingdienst unrealistisch wäre, für die experimentelle Untersuchung jedoch angemessen ist. #todo("Abbildung 5.1: Architekturdiagramm — drei Boxen (Frontend, Backend, PostgreSQL), Pfeile mit Beschriftungen REST (/path, /hpa_path, /clusters, ...), WebSocket (/ws, /ws/hpa), SQL.")
+Die Anwendung läuft auch ohne Datenbankanbindung; in diesem Fall stehen lediglich die Benchmark-Persistenz-Endpunkte nicht zur Verfügung. Diese verzögerte Konstruktion sämtlicher Datenstrukturen beim Start ist gerechtfertigt, weil die Arbeit auf einen statischen Graphen ausgerichtet ist und alle Vorberechnungen damit nur einmal pro Serverstart anfallen, eine Konstellation, die für einen produktiven Routingdienst unrealistisch wäre, für die experimentelle Untersuchung jedoch angemessen ist. #todo("Abbildung 5.1: Architekturdiagramm: drei Boxen (Frontend, Backend, PostgreSQL), Pfeile mit Beschriftungen REST (/path, /hpa_path, /clusters, ...), WebSocket (/ws, /ws/hpa), SQL.")
 
-== Datenbeschaffung und Graphaufbau
+== Datenbeschaffung und Graphaufbau <sec:datenbeschaffung>
 
-Die in dieser Arbeit verwendete Datenbasis besteht aus realen Straßennetzen, die über das OpenStreetMap-Projekt (OSM) bezogen werden (siehe Abschnitt 2.5). Der Zugriff auf die Rohdaten sowie deren Aufbereitung zu einem für Graphalgorithmen unmittelbar nutzbaren Datenmodell erfolgt über die Bibliothek OSMnx (Boeing, 2017). OSMnx kapselt die Kommunikation mit der Overpass-API, führt eine geometrische Vereinfachung des Netzwerks durch und stellt das Ergebnis als networkx.MultiDiGraph zur Verfügung. Damit entfällt sowohl der Aufwand einer eigenen OSM-XML-Verarbeitung als auch eine Konvertierungsschicht zwischen Datenbeschaffung und Algorithmik.
+Die in dieser Arbeit verwendete Datenbasis besteht aus realen Straßennetzen, die über das OpenStreetMap-Projekt (OSM) bezogen werden (siehe Abschnitt 2.5). Der Zugriff auf die Rohdaten sowie deren Aufbereitung zu einem für Graphalgorithmen unmittelbar nutzbaren Datenmodell erfolgt über die Bibliothek OSMnx @Boeing:2017 . OSMnx kapselt die Kommunikation mit der Overpass-API, führt eine geometrische Vereinfachung des Netzwerks durch und stellt das Ergebnis als networkx.MultiDiGraph zur Verfügung. Damit entfällt sowohl der Aufwand einer eigenen OSM-XML-Verarbeitung als auch eine Konvertierungsschicht zwischen Datenbeschaffung und Algorithmik.
 
 === Untersuchungsgebiet
 
@@ -57,7 +57,7 @@ Um wiederholte Anfragen an die Overpass-API zu vermeiden, persistiert die Anwend
   ),
 ) <lst:osm_wrapper>
 
-== A\*-Algorithmus
+== A\*-Algorithmus <sec:astar>
 
 Die Implementierung des A\*-Algorithmus (siehe Abschnitt 2.2.2) erfolgt in der Klasse AStarPathfinder und kapselt sowohl die eigentliche Pfadsuche als auch die für die spätere Auswertung benötigte Erfassung von Laufzeit- und Strukturmetriken. Der Fokus dieses Abschnitts liegt auf den konkreten Implementierungsentscheidungen; eine erneute formale Darstellung des Algorithmus erfolgt nicht.
 
@@ -71,14 +71,14 @@ Als Heuristik wird die Haversine-Distanz zwischen zwei Knoten in Metern verwende
   caption: flex-caption(
     [Haversine-Distanz als A\*-Heuristik],[]
   ),
-) <lst:parallele_kanten>
+) <lst:haversine>
 
 \
-Die Wahl der Haversine-Distanz gegenüber der euklidischen Distanz auf einer projizierten Ebene ist eine bewusste Entscheidung. Die in Abschnitt 2.2.2 dargestellte Optimalitätsgarantie von A\* setzt eine zulässige Heuristik voraus, die die tatsächliche Restdistanz zum Ziel niemals überschätzt. Die Haversine-Distanz erfüllt diese Eigenschaft global auf der Erdoberfläche, da sie die Großkreisdistanz zwischen zwei Punkten liefert und damit eine untere Schranke für jede mögliche Routenlänge entlang des Straßennetzes darstellt. Eine Projektion in ein lokales Koordinatensystem wie UTM (siehe Abschnitt 2.6) führt hingegen mit zunehmendem Abstand vom Bezugsmeridian zu Verzerrungen, die im Einzelfall zur Überschätzung der Restdistanz führen können. Da A\* auf dem unprojizierten OSM-Graphen operiert, in dem Knotenkoordinaten als geographische Koordinaten vorliegen, vermeidet die Verwendung der Haversine-Distanz zudem eine zusätzliche Projektionsschicht und behält die Zulässigkeit der Heuristik unter allen Bedingungen bei.
+Die Wahl der Haversine-Distanz gegenüber der euklidischen Distanz auf einer projizierten Ebene ist eine bewusste Entscheidung. Die in Abschnitt 2.2.2 dargestellte Optimalitätsgarantie von A\* setzt eine zulässige Heuristik voraus, die die tatsächliche Restdistanz zum Ziel niemals überschätzt. Die Haversine-Distanz erfüllt diese Eigenschaft global auf der Erdoberfläche, da sie die Großkreisdistanz zwischen zwei Punkten liefert und damit eine untere Schranke für jede mögliche Routenlänge entlang des Straßennetzes darstellt. Eine Projektion in ein lokales Koordinatensystem wie UTM (siehe @koordinatensysteme) führt hingegen mit zunehmendem Abstand vom Bezugsmeridian zu Verzerrungen, die im Einzelfall zur Überschätzung der Restdistanz führen können. Da A\* auf dem unprojizierten OSM-Graphen operiert, in dem Knotenkoordinaten als geographische Koordinaten vorliegen, vermeidet die Verwendung der Haversine-Distanz zudem eine zusätzliche Projektionsschicht und behält die Zulässigkeit der Heuristik unter allen Bedingungen bei.
 
 === Datenstrukturen
 
-Die Open Set wird als binärer Min-Heap über Tupel der Form (f_score, node_id) realisiert, implementiert mit Pythons heapq-Modul. Das Modul stellt Push- und Pop-Operationen in O(log n) bereit. Eine Decrease-Key-Operation, wie sie in der lehrbuchüblichen Beschreibung von A\* (etwa bei Cormen et al., 2009) angenommen wird, unterstützt heapq nicht direkt. Stattdessen wird die als Lazy Deletion bekannte Variante umgesetzt: Wird ein Knoten über einen kürzeren Pfad erreicht, fügt die Implementierung ihn erneut mit dem niedrigeren f-Wert in den Heap ein, ohne den veralteten Eintrag zu entfernen. Beim Pop prüft eine Wächter-Bedingung, ob der entnommene Knoten bereits in der Closed Set vorhanden ist; trifft das zu, wird der Eintrag verworfen. Diese Variante erhöht zwar den Speicherbedarf des Heaps gegenüber einer echten Decrease-Key-Implementierung, liegt asymptotisch jedoch in derselben Komplexitätsklasse und ist in der Praxis deutlich einfacher zu implementieren.
+Die Open Set wird als binärer Min-Heap über Tupel der Form (f_score, node_id) realisiert, implementiert mit Pythons heapq-Modul. Das Modul stellt Push- und Pop-Operationen in O(log n) bereit. Eine Decrease-Key-Operation, wie sie in der lehrbuchüblichen Beschreibung von A\* (etwa bei @Cormen:2009) angenommen wird, unterstützt heapq nicht direkt. Stattdessen wird die als Lazy Deletion bekannte Variante umgesetzt: Wird ein Knoten über einen kürzeren Pfad erreicht, fügt die Implementierung ihn erneut mit dem niedrigeren f-Wert in den Heap ein, ohne den veralteten Eintrag zu entfernen. Beim Pop prüft eine Wächter-Bedingung, ob der entnommene Knoten bereits in der Closed Set vorhanden ist; trifft das zu, wird der Eintrag verworfen. Diese Variante erhöht zwar den Speicherbedarf des Heaps gegenüber einer echten Decrease-Key-Implementierung, liegt asymptotisch jedoch in derselben Komplexitätsklasse und ist in der Praxis deutlich einfacher zu implementieren.
 Drei weitere Datenstrukturen begleiten die Hauptschleife. Das Dictionary g_score speichert für jeden bisher erreichten Knoten die Länge des kürzesten bekannten Pfades vom Startknoten. Das Dictionary came_from hält die Eltern-Beziehung jedes erreichten Knotens für die spätere Pfadrekonstruktion. Die Menge closed_set markiert Knoten, deren endgültige Distanz bereits feststeht und die nicht erneut expandiert werden.
 
 === Behandlung paralleler Kanten
@@ -116,7 +116,7 @@ Die Hauptschleife folgt der lehrbuchüblichen Struktur von A\*, ist jedoch als P
   caption: flex-caption(
     [Kern der A\*-Hauptschleife],[]
   ),
-) <lst:parallele_kanten>
+) <lst:astar_loop>
 \
 Die Generator-Form bringt zwei Vorteile mit sich, die in Abschnitt 5.1 bereits skizziert wurden. Erstens bleibt die Algorithmusimplementierung frei von Annahmen über die spätere Verwendung der Zwischenzustände; das WebSocket-Streaming, der nicht-streamende REST-Aufruf und der Benchmark-Adapter konsumieren denselben Generator. Zweitens lassen sich die ausgegebenen Zustände direkt für die Live-Visualisierung im Frontend nutzen, ohne dass der Algorithmus selbst Kenntnis vom Übertragungsweg haben muss.
 
@@ -132,7 +132,7 @@ Wird der Zielknoten aus der Open Set entnommen, rekonstruiert die Methode recons
   caption: flex-caption(
     [Rückwärts-Rekonstruktion des Pfades aus der Eltern-Beziehung.],[]
   ),
-) <lst:parallele_kanten>
+) <lst:reconstruct_path>
 
 === Erfassung von Laufzeitmetriken
 Für die spätere Auswertung in Kapitel 7 erfasst die Implementierung sechs Metriken pro Pfadanfrage und gibt sie in jedem Generator-Yield im Feld stats mit aus. Tabelle 5.1 fasst die erhobenen Größen und ihre Bedeutung zusammen.
@@ -153,16 +153,14 @@ table.header[Metrik][Bedeutung],
 Diese Granularität erlaubt es, in der Auswertung nicht nur die Gesamtlaufzeit zu vergleichen, sondern auch zwischen den Komponenten zu differenzieren, die zur Laufzeit beitragen, etwa zwischen Suchraumgröße (visited_nodes_count) und Heap-Verwaltungsaufwand (heap_pushes und heap_pops).
 #todo("Kapitel 7: Stats systematisch über alle Algorithmen und Ausschnitte aggregieren und visualisieren.")
 
-== Hierarchisches Pathfinding mit HPA\*
+== Hierarchisches Pathfinding mit HPA\* <sec:hpastar>
 Die in dieser Arbeit implementierte Variante des Hierarchical Pathfinding A\* (HPA\*) folgt dem Grundgerüst von Botea et al. @Botea:2004 und überträgt es auf die spezifischen Eigenschaften eines OSM-Straßennetzes. Sie weicht in zwei Punkten vom ursprünglichen Vorschlag ab. Erstens werden die abstrakten Knoten nicht als Paare aus Entry- und Exit-Punkten pro Cluster-Border modelliert, sondern jeder Border-Knoten ist ein einzelner abstrakter Knoten, der zugleich Exit für den einen und Entry für das benachbarte Cluster darstellt. Zweitens erfolgt die Cluster-Bildung nicht über das in @Botea:2004 verwendete reguläre Gitter, das ein dichtes Grid voraussetzt, sondern über eine Network-Voronoi-Partitionierung des Graphen, da OSM-Straßennetze keine gitterartige Struktur besitzen (siehe Abschnitt 2.4). Beide Adaptionen werden in den folgenden Unterabschnitten begründet.
 === Übersicht der drei Phasen
 Die Implementierung verteilt die Arbeit auf eine einmalige Vorberechnung beim Start und eine Query-Phase pro Pfadanfrage. Die Vorberechnung umfasst zwei Schritte: die Network-Voronoi-Partitionierung des Graphen (Abschnitt 5.4.2) und die Konstruktion des abstrakten Graphen (Abschnitt 5.4.3). Die Query-Phase besteht aus der abstrakten A\*-Suche über dem Gate-Graphen (Abschnitt 5.4.4) und der anschließenden Verfeinerung der gefundenen Gate-Sequenz zu einem konkreten OSM-Pfad (Abschnitt 5.4.5).
 Die Trennung in Vorberechnung und Query ist die zentrale Idee hierarchischer Pathfinding-Verfahren: Aufwand, der einmal anfällt, wird aus der Query-Schleife herausgezogen, sodass jede einzelne Pfadanfrage von einer reduzierten Suchraumgröße profitiert. Für eine Anwendung mit statischem Straßennetz, wie sie hier untersucht wird, ist diese Aufteilung uneingeschränkt vorteilhaft. Eine Diskussion der Folgen für dynamische Szenarien findet sich in Kapitel 8.
 === Network-Voronoi-Clustering
 Die Cluster-Bildung erfolgt in der Klasse RegionGrow und basiert auf einem Multi-Source-Dijkstra-Lauf, der von einem regelmäßigen Gitter aus Seed-Punkten ausgeht. Das Verfahren gliedert sich in drei Schritte.
-Zunächst wird der OSM-Graph in das lokale UTM-Koordinatensystem projiziert (siehe Abschnitt 2.6). Über die Bounding-Box des projizierten Graphen wird ein gleichmäßiges ntimesnn times n
-ntimesn-Gitter aus Seed-Punkten gelegt, wobei nn
-n über den Parameter grid_size konfigurierbar ist. Anschließend wird jeder Gitter-Punkt auf den nächstgelegenen OSM-Knoten abgebildet. Die Projektion in UTM ist hierbei ausschließlich für die Konstruktion des Gitters notwendig und beeinflusst weder die Distanzberechnung noch die nachfolgende Pfadsuche.
+Zunächst wird der OSM-Graph in das lokale UTM-Koordinatensystem projiziert (siehe @koordinatensysteme). Über die Bounding-Box des projizierten Graphen wird ein gleichmäßiges $n times n$-Gitter aus Seed-Punkten gelegt, wobei $n$ über den Parameter grid_size konfigurierbar ist. Anschließend wird jeder Gitter-Punkt auf den nächstgelegenen OSM-Knoten abgebildet. Die Projektion in UTM ist hierbei ausschließlich für die Konstruktion des Gitters notwendig und beeinflusst weder die Distanzberechnung noch die nachfolgende Pfadsuche.
 
 #figure(
   align(
@@ -175,8 +173,7 @@ n über den Parameter grid_size konfigurierbar ist. Anschließend wird jeder Git
 ) <lst:create-seed-nodes>
 \
 
-Die abschließende Deduplizierung über dict.fromkeys ist notwendig, da auf einem realen Straßennetz mehrere Gitterpunkte auf denselben OSM-Knoten abgebildet werden können, insbesondere in dünn besiedelten Bereichen mit weiten Abständen zwischen den Knoten. Die tatsächliche Anzahl der Seeds liegt dadurch in der Regel unter n2n^2
-n2.
+Die abschließende Deduplizierung über dict.fromkeys ist notwendig, da auf einem realen Straßennetz mehrere Gitterpunkte auf denselben OSM-Knoten abgebildet werden können, insbesondere in dünn besiedelten Bereichen mit weiten Abständen zwischen den Knoten. Die tatsächliche Anzahl der Seeds liegt dadurch in der Regel unter $n^2$.
 Im zweiten Schritt expandiert ein Multi-Source-Dijkstra-Lauf von allen Seeds gleichzeitig. Die Priority Queue wird initial mit allen Seeds bei Distanz 0 belegt; jeder Heap-Eintrag trägt zusätzlich die ID des Seeds, von dem aus der Knoten erreicht wurde. Sobald ein Knoten zum ersten Mal aus der Queue entnommen wird, wird er endgültig demjenigen Seed zugeordnet, der ihn erreicht hat. Da Dijkstra optimal ist, entspricht diese Zuordnung garantiert dem nach Straßennetz-Distanz nächstgelegenen Seed. Das Ergebnis ist eine Network-Voronoi-Partition des Graphen, also die diskrete Variante eines Voronoi-Diagramms, in der die Distanzfunktion nicht der euklidischen Metrik, sondern der Kantenlänge entlang des Graphen folgt (siehe Abschnitt 2.4).
 
 #figure(
@@ -185,9 +182,9 @@ Im zweiten Schritt expandiert ein Multi-Source-Dijkstra-Lauf von allen Seeds gle
     fhjcode(code: read("/code-snippets/core_msd.py"), lastline: 119),
   ),
   caption: flex-caption(
-    [Erzeugung der Seed-Knoten aus einem regelmäßigen Gitter über der Bounding-Box],[]
+    [Kern des Multi-Source-Dijkstra für die Voronoi-Partitionierung],[]
   ),
-) <lst:create-seed-nodes>
+) <lst:msd>
 \
 
 Eine Designentscheidung dieses Schritts betrifft die Behandlung von Einbahnstraßen. Der OSM-Graph ist als gerichteter Multigraph (MultiDiGraph) modelliert, in dem Einbahnstraßen entsprechend nur in einer Richtung passierbar sind. Für die Voronoi-Partitionierung wird der Graph jedoch durch die Methode to_undirected() zu einem ungerichteten Graphen reduziert. Dieser Schritt ist gerechtfertigt, weil die Voronoi-Zugehörigkeit eines Knotens eine räumliche Eigenschaft ist und keine routenabhängige Größe. Würde die Partitionierung Einbahnstraßen respektieren, könnten sich entlang asymmetrischer Straßen ungewollt streifenartige Cluster bilden, die nicht der geographischen Nachbarschaft entsprechen. Da die Partitionierung ausschließlich der Strukturierung des Suchraums dient und nicht der Vorberechnung von Routen, ist die Reduktion auf den ungerichteten Graphen unkritisch.
@@ -198,3 +195,157 @@ Das Ergebnis der Cluster-Bildung wird in einem Dictionary zurückgegeben, das vi
 Auf Grundlage der Voronoi-Partition konstruiert die Klasse HPAStarPathfinder in der Methode build_abstract_graph einen abstrakten Graphen, dessen Knoten und Kanten die Cluster-Struktur explizit machen. Die Konstruktion folgt der in @Botea:2004 vorgeschlagenen Struktur, weicht jedoch in der Modellierung der Gate-Knoten ab.
 In der ursprünglichen Variante von HPA\* werden für jede Cluster-Border zwei abstrakte Knoten eingeführt, einer für den Eintritt in das eine Cluster und einer für den Austritt in das benachbarte. Diese Verdopplung ist sinnvoll für gitterbasierte Karten mit breiten Border-Bereichen, in denen sich Entry- und Exit-Punkt geographisch unterscheiden können. Auf einem OSM-Straßennetz hingegen ist die Cluster-Border keine flächige Region, sondern eine einzelne Kante zwischen zwei Knoten in unterschiedlichen Clustern. Die Verdopplung wäre hier inhaltsleer; jeder OSM-Knoten, der Endpunkt einer cluster-überschreitenden Kante ist, wird daher als ein einzelner abstrakter Knoten modelliert und übernimmt sowohl die Rolle des Exits aus seinem eigenen Cluster als auch die des Entries für das benachbarte.
 Die Konstruktion läuft in zwei Durchgängen. Im ersten Durchgang werden alle Kanten des OSM-Graphen daraufhin geprüft, ob sie zwischen Knoten verschiedener Cluster verlaufen. Trifft das zu, werden beide Endpunkte als abstrakte Knoten registriert und durch eine Inter-Cluster-Kante mit dem Gewicht der OSM-Kantenlänge verbunden. Gleichzeitig werden die Endpunkte den Exit- und Entry-Listen ihrer jeweiligen Cluster hinzugefügt.
+
+#figure(
+  align(
+    left,
+    fhjcode(code: read("/code-snippets/inter_cluster_edges.py"), lastline: 17),
+  ),
+  caption: flex-caption(
+    [Identifikation und Eintragung von Inter-Cluster-Kanten],[]
+  ),
+) <lst:inter_cluster_edges>
+\
+
+Im zweiten Durchgang werden die Intra-Cluster-Kanten ergänzt. Für jedes Cluster wird die exakte Distanz zwischen jedem Paar aus Entry- und Exit-Gate vorab über einen vollständigen A\*-Lauf bestimmt und als Kantengewicht im abstrakten Graphen hinterlegt. Diese Vorberechnung ist der teuerste Schritt der Initialisierung; ihr Aufwand wächst quadratisch in der Anzahl der Gates pro Cluster. Sie erfolgt jedoch nur einmal pro Serverstart und entlastet jede nachfolgende Query um eine entsprechende Anzahl A\*-Läufe.
+
+Eine bewusste Vereinfachung dieser Konstruktion betrifft die Auswahl der Gates. In erweiterten Varianten von HPA\* werden Gate-Mengen durch Pruning-Verfahren reduziert, etwa indem nur die geographisch repräsentativsten Border-Knoten als Gates erhalten bleiben. Die vorliegende Implementierung verzichtet auf jegliches Pruning. Jeder Border-Knoten ist ein Gate. Diese Entscheidung folgt dem Grundsatz, dass mehr Gates die Korrektheit der abstrakten Suche begünstigen, indem sie ihr mehr Routing-Optionen geben. Pruning ist eine Optimierungsfrage und wirkt sich nicht auf die Korrektheit aus; ein systematischer Vergleich verschiedener Pruning-Strategien wird in Kapitel 8 als zukünftige Arbeit vorgeschlagen.
+
+=== Abstrakte A\*-Suche
+
+Die zweite Phase der Query findet auf dem abstrakten Graphen statt und sucht eine optimale Sequenz von Gates vom Start- zum Zielcluster. Die Methode abstract_astar ist im Kern eine reguläre A\*-Suche mit derselben Haversine-Heuristik wie auf dem OSM-Graphen (siehe @sec:astar). Die einzige strukturelle Besonderheit liegt in der Behandlung des Start- und Zielknotens, die selbst keine Gates sind und damit nicht im abstrakten Graphen vorkommen.
+
+In der ursprünglichen HPA\*-Variante werden Start- und Zielknoten als temporäre Gates in den abstrakten Graphen eingefügt und über A\*-Läufe innerhalb ihres jeweiligen Clusters mit den existierenden Gates verbunden. Die vorliegende Implementierung folgt diesem Ansatz mit einem Detail, das die Vorberechnung in den abstrakten Graphen wirksam überträgt: Die Anbindungs-A\*-Läufe sind über einen optionalen Parameter node_allowlist der Low-Level-Methode a_star auf die Knotenmenge des jeweiligen Clusters beschränkt. Die A\*-Suche kann damit das Cluster nicht verlassen, was die Suchtiefe pro Anbindung scharf begrenzt.
+
+#figure(
+  align(
+    left,
+    fhjcode(code: read("/code-snippets/allowlist_filter.py"), lastline: 5),
+  ),
+  caption: flex-caption(
+    [Optionale Knotenmengen-Beschränkung in der Low-Level-A\*-Schleife],[]
+  ),
+) <lst:allowlist_filter>
+\
+
+Diese Komposition ist ein Vorteil der generischen A\*-Implementierung. Die HPA\*-Schicht benötigt keine eigene Variante einer Intra-Cluster-Suche, sondern parametriert dieselbe Methode durch eine Knotenmenge. Eine frühere Variante der Implementierung verwendete an dieser Stelle eine Approximation, die die Distanz vom Startknoten zum Gate als Summe der Voronoi-Distanzen $"dist"["start"] + "dist"["gate"]$ ausdrückte. Diese Summe entspricht der Distanz über den Cluster-Seed und überschätzt im Allgemeinen die echte direkte Distanz. Da A\* für die Optimalitätsgarantie eine zulässige, also nicht überschätzende Heuristik benötigt, hätte diese Approximation den von HPA\* gefundenen Pfad gegenüber dem von Standard-A\* gefundenen suboptimal werden lassen. Die jetzige Implementierung mit echten, cluster-beschränkten A\*-Läufen erhält die Optimalität strikt, allerdings zum Preis einer messbaren Anbindungs-Latenz pro Query, die in Kapitel 7 untersucht wird.
+
+Der Aufbau des Heaps für die abstrakte Suche erfolgt entsprechend, indem für jedes Exit-Gate des Startclusters die echte Distanz vom Startknoten bestimmt und mit der Haversine-Heuristik zum Zielknoten zu einem f-Wert kombiniert wird. Symmetrisch wird für jedes Entry-Gate des Zielclusters die echte Distanz zum Zielknoten vorab berechnet und in einem Dictionary end_extra hinterlegt. Erreicht die Suche während der Expansion ein Entry-Gate des Zielclusters, wird durch Addition von end_extra ein Kandidat für die Gesamtkosten gebildet und mit dem bisher besten Kandidaten verglichen. Die Suche terminiert, sobald der nächste aus dem Heap entnommene f-Wert diesen besten Gesamtwert nicht mehr unterbieten kann.
+
+#figure(
+  align(
+    left,
+    fhjcode(code: read("/code-snippets/endpoint_attach_astar.py"), lastline: 13),
+  ),
+  caption: flex-caption(
+    [Aufbau der echten Anbindungs-Distanzen für Start- und Zielknoten],[]
+  ),
+) <lst:endpoint_attach>
+\
+
+=== Verfeinerung der abstrakten Pfadsequenz
+
+Die abstrakte Suche liefert eine Sequenz von Gate-Knoten, die das Skelett des endgültigen Pfades bildet. In der dritten Phase wird diese Sequenz in einen vollständigen OSM-Pfad überführt, indem zwischen aufeinanderfolgenden Gates die konkreten Zwischenknoten ergänzt werden.
+
+Die Verfeinerung unterscheidet zwei Fälle anhand des inter-Attributs der abstrakten Kante. Eine Inter-Cluster-Kante repräsentiert die direkte OSM-Verbindung zwischen zwei Gates verschiedener Cluster und wird durch eine einzelne Kantentraversierung aufgelöst, ohne dass weitere Knoten zu durchsuchen sind. Eine Intra-Cluster-Kante hingegen repräsentiert die vorberechnete kürzeste Verbindung zwischen zwei Gates desselben Clusters; ihr konkreter Verlauf muss zur Query-Zeit durch einen weiteren A\*-Lauf rekonstruiert werden. Eine Vorberechnung auch der konkreten Knotenfolgen aller Gate-Paare wäre möglich, würde aber den Speicherbedarf der Vorberechnung deutlich erhöhen, ohne die Query-Antwortzeit substanziell zu verändern.
+
+Die Verfeinerungs-A\*-Läufe nutzen die unveränderte Low-Level-Methode ohne node_allowlist. Da Start- und Zielknoten dieser Sub-Anfragen jeweils Gates sind und der direkte Pfad zwischen ihnen per Konstruktion innerhalb eines Clusters verläuft, ist eine Beschränkung nicht erforderlich. Die Statistiken jedes Sub-Laufs werden zu den Gesamtstatistiken der Query addiert, sodass Größen wie visited_nodes_count am Ende den Gesamtaufwand aller Phasen widerspiegeln.
+
+Eine während der Entwicklung als Debug-Hilfe entstandene zweite Verfeinerungsvariante (hpa_star_partial_generator) führt A\*-Läufe nur im Start- und Zielcluster durch und überspringt die mittleren Cluster, indem sie deren Gates direkt aneinanderreiht. Diese Variante ist nicht Teil der Evaluation und bleibt hier nur der Vollständigkeit halber erwähnt.
+
+=== Erfasste Metriken
+
+HPA\* erfasst zusätzlich zu den in @sec:astar beschriebenen A\*-Metriken vier Größen, die die spezifische Struktur des Algorithmus widerspiegeln. Tabelle 5.2 fasst sie zusammen.
+
+#figure(
+  caption: [Zusätzliche Laufzeitmetriken der HPA\*-Implementierung.],
+  table(
+    columns: (auto, 1fr),
+    align: (left, left),
+    table.header[Metrik][Bedeutung],
+    [precomputation_ms], [Dauer der einmaligen Konstruktion des abstrakten Graphen beim Serverstart, einschließlich der Vorberechnung aller Intra-Cluster-Distanzen.],
+    [abstract_search_ms], [Dauer der reinen abstrakten A\*-Suche in der Query-Phase, ohne die Anbindungs-A\*-Läufe für Start und Ziel.],
+    [abstract_search_nodes_visited], [Anzahl der im abstrakten Graphen expandierten Gate-Knoten.],
+    [refinement_ms], [Dauer der Verfeinerung, also der Summe aller Sub-A\*-Läufe zwischen den Gates der abstrakten Pfadsequenz.],
+    [gate_crossings], [Anzahl der im rekonstruierten Pfad enthaltenen Inter-Cluster-Übergänge.],
+  ),
+) <tbl:hpastar_metriken>
+
+Diese Aufschlüsselung erlaubt in Kapitel 7 eine Differenzierung des Gesamtaufwands nach Phasen. Insbesondere lässt sich der Anteil der einmaligen Vorberechnung von der wiederholten Query-Last trennen und untersuchen, ab welcher Pfadlänge der Vorberechnungsaufwand sich amortisiert.
+
+#todo("Kapitel 7: Vorberechnungs-Amortisation als Funktion der Pfadlänge auswerten.")
+
+== Visualisierung und WebSocket-Streaming <sec:visualisierung>
+
+Eine Kernanforderung der Anwendung ist die schrittweise Live-Darstellung des Suchprozesses, nicht nur des Endergebnisses. Diese Anforderung lässt sich nicht über das klassische REST-Modell erfüllen, in dem ein einzelner Antwortkörper die vollständige Antwort transportiert. Stattdessen kommt ein bidirektionaler WebSocket-Kanal zum Einsatz, über den der Server die in @sec:astar und @sec:hpastar beschriebenen Generator-Zustände als Folge einzelner Nachrichten an den Browser streamt. Dieser Abschnitt beschreibt das verwendete Protokoll, den serverseitigen Endpunkt und die clientseitige Verarbeitung.
+
+=== WebSocket-Protokoll
+
+Das Protokoll ist asymmetrisch und zustandslos auf Verbindungsebene. Der Client sendet pro Anfrage eine einzelne JSON-Nachricht mit Start- und Zielkoordinaten sowie zwei optionalen Steuerparametern: realtime entscheidet, ob alle Zwischenzustände gestreamt werden oder nur das Endergebnis, und delay_ms erlaubt es, einen künstlichen Zeitversatz zwischen Nachrichten einzufügen, um die Visualisierung in der Demonstration verlangsamen zu können. Der Server antwortet mit einer Folge von Zustands-Nachrichten, deren Format unmittelbar dem in @sec:astar definierten Generator-Yield entspricht. Jede Nachricht trägt ein type-Feld mit einem von vier Werten: visiting für einen aus der Open Set entnommenen Knoten, exploring für einen erstmals oder verbessert in die Open Set eingefügten Knoten, complete für das gefundene Pfadergebnis sowie no_path für den Fall einer erfolglosen Suche. Jede Nachricht enthält zusätzlich das Feld stats mit dem aktuellen Stand der in @tbl:hpastar_metriken aufgeführten Laufzeit- und Strukturmetriken.
+
+Das Backend stellt drei separate WebSocket-Endpunkte bereit: /ws für A\*, /ws/hpa für HPA\* sowie /ws/hpa_partial für die in @sec:hpastar erwähnte Debug-Variante. Die Trennung in eigene Endpunkte statt eines gemeinsamen Endpunkts mit Algorithmus-Parameter wurde aus Gründen der Übersichtlichkeit gewählt; alle drei Endpunkte folgen demselben Nachrichtenschema und unterscheiden sich nur in dem aufgerufenen Generator.
+
+=== Serverseitiger Endpunkt
+
+Die Implementierung des A\*-WebSocket-Endpunkts in main.py demonstriert das Zusammenspiel zwischen FastAPI, dem als Generator implementierten Pathfinder und dem asynchronen Versand der Zustände. @lst:ws_endpoint zeigt die wesentliche Schleife in vereinfachter Form.
+
+#figure(
+  align(
+    left,
+    fhjcode(code: read("/code-snippets/ws_endpoint.py"), lastline: 12),
+  ),
+  caption: flex-caption(
+    [Serverseitiger A\*-WebSocket-Endpunkt],[]
+  ),
+) <lst:ws_endpoint>
+\
+
+Drei Eigenschaften dieser Implementierung sind hervorzuheben. Erstens benötigt der Endpunkt keinerlei algorithmusspezifischen Code; er konsumiert lediglich den Generator und reicht jeden ge-yieldeten Zustand unverändert an den WebSocket weiter. Damit wird die in @sec:architektur eingeführte Entkopplung zwischen Algorithmuslogik und Transportschicht praktisch wirksam. Zweitens erlaubt die await-basierte Schleife eine kooperative Unterbrechung zwischen den einzelnen Sendevorgängen, sodass das delay_ms-Throttling ohne aktives Warten realisiert werden kann. Drittens würde derselbe Generator bei einem nicht-streamenden REST-Endpunkt schlicht zu Ende konsumiert und nur der letzte Zustand zurückgegeben, ohne dass am Generator-Code etwas verändert werden müsste. Die in main.py vorhandenen REST-Endpunkte /path, /hpa_path und der Benchmark-Adapter aus @sec:hpastar nutzen genau dieses Muster.
+
+=== Clientseitige Verarbeitung
+
+Auf der Clientseite ist die Visualisierung im Vue-3-Composable usePathfinder.ts zentralisiert. Das Composable kapselt für jeden Algorithmus eine eigene WebSocket-Verbindung sowie drei Leaflet-LayerGroup-Objekte: einen für besuchte Knoten (rote Punkte), einen für in die Open Set eingefügte Knoten (magenta Punkte) und einen für den finalen Pfad (Polyline in algorithmus-spezifischer Farbe). Eingehende Nachrichten werden anhand des type-Feldes auf den passenden Layer verteilt. @lst:ws_client zeigt diese Logik in komprimierter Form.
+
+#figure(
+  align(
+    left,
+    fhjcode(code: read("/code-snippets/ws_client.ts"), lastline: 30),
+  ),
+  caption: flex-caption(
+    [Clientseitige Verarbeitung der WebSocket-Nachrichten],[]
+  ),
+) <lst:ws_client>
+\
+
+Die Verwendung getrennter Layer pro Nachrichtentyp ermöglicht es dem Benutzer, einzelne Visualisierungsebenen über Schaltflächen ein- und auszublenden, ohne die zugrunde liegenden Daten neu anfordern zu müssen. Da Leaflet-LayerGroups Vue-reaktiv über shallowRef referenziert werden, lassen sich die Layer auch nach Verbindungsabbrüchen oder Algorithmus-Wechseln gezielt zurücksetzen, ohne die Karte als Ganzes neu zu rendern.
+
+Auf dem in main.py konfigurierten Frontend, dargestellt in PathfinderMap.vue, werden zusätzlich die statischen Visualisierungsdaten der Vorberechnung angezeigt: Cluster-Polygone, Seed-Knoten, Cluster-Border-Kanten (Gates) sowie der vollständige abstrakte Graph. Diese Daten werden beim Mount der Komponente einmalig per REST über die Endpunkte /clusters, /seeds, /gates und /abstract_graph bezogen und als eigene Leaflet-Layer eingeblendet. Sie verändern sich während einer Pfadsuche nicht und erfordern daher kein Streaming.
+
+#todo("Abbildung 5.2: Screenshot der Live-Visualisierung mit aktiver A*-Suche, sichtbaren Cluster-Layern und Statistik-Panel.")
+
+== REST-API <sec:rest>
+
+Neben den in @sec:visualisierung beschriebenen WebSocket-Endpunkten stellt das Backend eine konventionelle REST-API bereit, die für nicht-streamende Pfadanfragen, den Abruf statischer Visualisierungsdaten und die Persistenz von Benchmark-Ergebnissen genutzt wird. Alle Endpunkte sind in main.py definiert und nutzen FastAPIs Pydantic-basierte Request- und Response-Modellierung. Eine vollständige OpenAPI-Spezifikation wird zur Laufzeit unter /docs automatisch generiert. @tbl:rest_endpoints listet die Endpunkte gruppiert nach Funktion auf.
+
+#figure(
+  caption: [REST-Endpunkte des Backends.],
+  table(
+    columns: (auto, auto, 1fr),
+    align: (left, left, left),
+    table.header[*Methode \& Pfad*][*Gruppe*][*Beschreibung*],
+    [`GET /`],                          [Karte],          [Liefert das vorberechnete Straßennetz als GeoJSON FeatureCollection für das initiale Karten-Rendering im Frontend.],
+    [`POST /path`],                     [Pathfinding],    [Führt eine A\*-Suche zwischen zwei Koordinaten aus und liefert das Ergebnis als GeoJSON LineString mit Laufzeit- und Strukturmetriken in den Properties.],
+    [`POST /hpa_path`],                 [Pathfinding],    [Wie /path, jedoch unter Verwendung von HPA\*.],
+    [`GET /clusters`],                  [Visualisierung], [Voronoi-Cluster-Regionen als GeoJSON-Polygone (konvexe Hüllen pro Cluster).],
+    [`GET /seeds`],                     [Visualisierung], [Cluster-Seed-Knoten als GeoJSON-Punkte.],
+    [`GET /gates`],                     [Visualisierung], [Cluster-Border-Kanten als GeoJSON LineStrings.],
+    [`GET /abstract_graph`],            [Visualisierung], [Vollständiger abstrakter Graph (Gate-Knoten und abstrakte Kanten) als GeoJSON.],
+    [`GET /benchmark/runs`],            [Benchmark],      [Liste aller persistierten Benchmark-Läufe, neueste zuerst.],
+    [`GET /benchmark/runs/{id}`],       [Benchmark],      [Einzelner Benchmark-Lauf mit allen zugehörigen Pfadergebnissen.],
+    [`GET /benchmark/runs/{id}/geojson`],[Benchmark],     [Alle Pfade eines Laufs als GeoJSON FeatureCollection für die kartographische Auswertung.],
+  ),
+) <tbl:rest_endpoints>
+
+Die Trennung zwischen REST und WebSocket folgt einem einfachen Kriterium. Anfragen, deren Antwort von einem einzelnen Wert oder einer in sich abgeschlossenen Datenstruktur gebildet wird, nutzen REST. Anfragen, deren Mehrwert in der schrittweisen Beobachtung des Antwortaufbaus liegt, nutzen WebSocket. Die in der Tabelle aufgeführten Pfadendpunkte (/path, /hpa_path) sind dabei als Bequemlichkeitsschicht über demselben Generator-Code zu verstehen, der auch die WebSocket-Endpunkte bedient: Sie konsumieren den Generator vollständig und geben ausschließlich den finalen Zustand zurück. Dies ist insbesondere für den in @sec:hpastar erwähnten Benchmark-Adapter relevant, der zur Reduktion der Messstörungen ohnehin nicht an Zwischenzuständen interessiert ist.
+
+Die Visualisierungs-Endpunkte werden vom Frontend einmal beim Mount der Karten-Komponente abgerufen und ändern sich während des Anwendungslaufs nicht. Sie sind daher als statische, cacheable GeoJSON-Antworten konzipiert. Die Benchmark-Endpunkte sind nur verfügbar, wenn die Anwendung mit gesetzter DATABASE_URL gestartet wurde; sie werden in @sec:benchmark im Detail behandelt.
