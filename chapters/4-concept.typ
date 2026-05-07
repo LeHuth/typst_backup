@@ -4,8 +4,9 @@
 
 == Systemübersicht
 
-Das in dieser Arbeit entwickelte System gliedert sich in zwei klar getrennte
-Phasen, die sich grundlegend in ihrer Ausführungshäufigkeit und ihrem
+Das Konzept des Systems lässt sich aus zwei Perspektiven beschreiben: seiner _statischen Struktur_, also den Komponenten und Datenstrukturen, aus denen es besteht, und seinem _Laufzeitverhalten_, also den Phasen, die bei der Ausführung durchlaufen werden. Die folgenden Abschnitte behandeln zunächst die strukturellen Bausteine (Voronoi-Clustering, Gate-Node-Architektur, abstrakter Graph) und anschließend das Zusammenspiel dieser Bausteine zur Laufzeit in Form der Build- und Query-Phase.
+
+Das System kennt zwei Laufzeitphasen, die sich grundlegend in ihrer Ausführungshäufigkeit und ihrem
 Ressourcenverhalten unterscheiden. Die Build-Phase wird einmalig pro
 OSM-Extrakt ausgeführt und erzeugt aus dem Rohgraphen die für die
 hierarchische Suche notwendigen Datenstrukturen. Die Query-Phase nutzt diese
@@ -45,10 +46,7 @@ Cluster-Zuordnung, Gate Nodes und abstraktem Graphen, soll persistent
 gespeichert werden, sodass nachfolgende Anfragen ohne erneuten Build-Lauf
 beantwortet werden können.
 
-#text(red)[Persistenz der Build-Artefakte ist aktuell noch nicht
-implementiert. Der Build-Lauf wird derzeit bei jedem Server-Start
-wiederholt. Die konkrete Wahl des persistenten Speichers wird in Kapitel
-Implementation diskutiert.]
+Die konkrete Wahl der Persistenztechnologie für die Build-Artefakte ist eine Frage der Implementierung und wird in @implementation behandelt.
 
 Die Query-Phase #todo("Query-Phase ausgiebiger beschreiben, evl. eigenes Kapitel.") nimmt eine Pfadanfrage in Form von Start- und
 Zielkoordinaten entgegen und liefert einen konkreten Pfad auf dem
@@ -67,14 +65,18 @@ Die Grundidee hierarchischen Routings besteht darin, den Graphen in mehrere Abst
 == Graphpartitionierung via Voronoi-Clustering
 
 Voraussetzung für eine solche Hierarchie ist eine Zerlegung des Basisgraphen in zusammenhängende Teilbereiche, sogenannte Cluster. In der vorliegenden Arbeit wird dazu ein Verfahren verwendet, das sich am Konzept des Network Voronoi Diagrams (NVD) orientiert. #todo("Kolahdouzan und Shahabi (2004) Quelle einpflegen") definieren das NVD als eine Spezialisierung des Voronoi-Diagramms für Graphen, bei der die Distanz zwischen zwei Objekten nicht die euklidische, sondern die kürzeste Netzwerkdistanz ist. Jeder Knoten des Graphen wird dem Seed-Knoten zugewiesen, zu dem er die geringste Netzwerkdistanz aufweist.
-In der Praxis wird dieses Clustering durch einen simultanen Dijkstra-Lauf von allen Seed-Knoten gleichzeitig realisiert. Der Dijkstra-Lauf wird dabei auf einer ungerichteten Sicht des Basisgraphen
+In der Praxis wird dieses Clustering durch einen simultanen Dijkstra-Lauf von allen Seed-Knoten gleichzeitig realisiert. Die Wellenfront jedes Seeds breitet sich im Graphen aus, bis alle Knoten einem Cluster zugewiesen sind. Knoten, an denen zwei Wellenfronten aufeinandertreffen, markieren die Clustergrenzen.
+
+Der Dijkstra-Lauf wird dabei auf einer ungerichteten Sicht des Basisgraphen
 ausgeführt, obwohl der Basisgraph selbst gerichtet ist. Diese Entscheidung
 ist für Straßennetze notwendig: Ein gerichteter Dijkstra würde an
 Einbahnstraßen abgebrochen werden und dadurch geografisch zerrissene Cluster
 erzeugen, deren Form durch die Verkehrsführung statt durch die räumliche
 Nähe bestimmt wäre. Da das Clustering ausschließlich der Partitionierung
 dient und nicht der Routenberechnung, ist die Vernachlässigung der
-Kantenrichtung in dieser Phase unproblematisch. Die Wellenfront jedes Seeds breitet sich im Graphen aus, bis alle Knoten einem Cluster zugewiesen sind. Knoten, an denen zwei Wellenfronten aufeinandertreffen, markieren die Clustergrenzen. Die Wahl netzwerkbasierter statt euklidischer Distanz ist dabei für Straßennetze entscheidend: Geographische Barrieren wie Flüsse, Bahnlinien oder nicht überquerbare Straßen werden durch die tatsächliche Graphstruktur korrekt abgebildet. Eine rein euklidische Zuweisung könnte Knoten zusammenfassen, die im Netzwerk weit voneinander entfernt oder gar nicht verbunden sind.
+Kantenrichtung in dieser Phase unproblematisch.
+
+Die Wahl netzwerkbasierter statt euklidischer Distanz ist dabei für Straßennetze entscheidend: Geographische Barrieren wie Flüsse, Bahnlinien oder nicht überquerbare Straßen werden durch die tatsächliche Graphstruktur korrekt abgebildet. Eine rein euklidische Zuweisung könnte Knoten zusammenfassen, die im Netzwerk weit voneinander entfernt oder gar nicht verbunden sind.
 Als Seed-Strategie wird in dieser Arbeit ein reguläres Gitter über das
 projizierte Kartengebiet (UTM) gelegt, dessen Rasterpunkte auf die jeweils
 nächstgelegenen OSM-Knoten gesnapped werden. Diese Methode ist für den vorliegenden Anwendungsfall geeignet: Da die verwendeten OSM-Extrakte rechteckige Gebiete abdecken, erzeugt ein gleichmäßiges Gitter eine hinreichend ausgewogene Initialverteilung der Seeds. Alternativen, wie die Auswahl zufälliger unbesetzter Knoten, könnten organischere Cluster erzeugen, wurden jedoch im Rahmen dieser Arbeit nicht implementiert, da die Optimierung der Clustering-Methode selbst nicht Gegenstand der Untersuchung ist.
@@ -83,25 +85,18 @@ nächstgelegenen OSM-Knoten gesnapped werden. Diese Methode ist für den vorlieg
 
 Nachdem der Graph partitioniert ist, muss eine abstrakte Repräsentation konstruiert werden. Eine naive Lösung wäre, jeden Cluster durch genau einen Knoten im abstrakten Graphen darzustellen. Dieser Ansatz ist jedoch problematisch: Ein solcher Knoten entspricht keinem realen Punkt im Basisgraphen, weshalb keine sinnvolle Kantengewichtung zwischen zwei benachbarten Cluster-Knoten definiert werden kann. Die Kosten für den Übergang von Cluster A nach Cluster B hängen nicht nur davon ab, welche Cluster benachbart sind, sondern konkret davon, an welcher Stelle die Grenze überquert wird.
 Dieses Problem wird durch die Einführung von Gate Nodes gelöst, wie sie analog auch bei @Botea:2004 als Transition Points beschrieben werden. Gate Nodes sind reale Knoten des Basisgraphen, die an der Grenze zwischen zwei Clustern liegen. Im abstrakten Graphen gibt es zwei Arten von Kanten: Inter-Cluster-Kanten verbinden Gate Nodes aus benachbarten Clustern und repräsentieren den Übergang zwischen Clustern; Intra-Cluster-Kanten verbinden Gate Nodes innerhalb desselben Clusters und repräsentieren die Kosten, diesen Cluster von einem Eingang zu einem Ausgang zu durchqueren.
-Die Gewichtung der Intra-Cluster-Kanten wird zur Build-Time berechnet. Für jedes Cluster wird A\* zwischen allen Paaren von Gate Nodes ausgeführt, wobei die Suche auf den Teilgraphen des jeweiligen Clusters beschränkt ist. Das resultierende Kantengewicht entspricht den tatsächlichen optimalen Traversierungskosten innerhalb des Clusters. Nur weil Gate Nodes echte Knoten des Basisgraphen sind, ist diese Kostenberechnung überhaupt möglich. Da der Basisgraph gerichtet ist, wird auch der abstrakte Graph als
+Die Gewichtung der Intra-Cluster-Kanten wird zur Build-Time berechnet. Für jedes Cluster wird A\* zwischen allen Paaren von Gate Nodes ausgeführt, wobei die Suche auf den Teilgraphen des jeweiligen Clusters beschränkt ist. Das resultierende Kantengewicht entspricht den tatsächlichen optimalen Traversierungskosten innerhalb des Clusters. Nur weil Gate Nodes echte Knoten des Basisgraphen sind, ist diese Kostenberechnung überhaupt möglich.
+
+Da der Basisgraph gerichtet ist, wird auch der abstrakte Graph als
 gerichteter Graph konstruiert. Für jede gerichtete Kante (u, v) im
 Basisgraphen, deren Endpunkte unterschiedlichen Clustern angehören, wird u
 als Exit-Gate seines Clusters und v als Entry-Gate des angrenzenden Clusters
 registriert. Intra-Cluster-Kanten verlaufen im abstrakten Graphen folglich
 gerichtet von Entry-Gates zu Exit-Gates desselben Clusters. Derselbe
 OSM-Knoten kann dabei in mehreren Rollen auftreten, ohne als separater
-Knoten dupliziert zu werden. #todo("Die Vorberechnung der Intra-Cluster-Kantengewichte muss auf
-den jeweiligen Cluster beschränkt werden. In der aktuellen Implementierung
-läuft die A*-Suche zur Gewichtsberechnung uneingeschränkt auf dem
-Gesamtgraphen, was die semantische Bedeutung der Intra-Cluster-Kanten
-verletzt: Eine solche Kante repräsentiert dann nicht mehr die Kosten zum
-Durchqueren des Clusters, sondern die Kosten eines beliebigen Pfades
-zwischen den beiden Gate Nodes, der auch durch andere Cluster verlaufen
-darf. Damit kodiert der abstrakte Graph Information, die er erst durch
-Komposition gewinnen sollte, und verliert seine Eigenschaft als echte
-Hierarchie-Ebene über dem Basisgraphen.")
+Knoten dupliziert zu werden. Wesentlich ist, dass die Vorberechnung der Intra-Cluster-Kantengewichte auf den jeweiligen Cluster beschränkt sein muss: Nur so repräsentiert eine Intra-Cluster-Kante tatsächlich die Kosten zum Durchqueren des Clusters und nicht die eines beliebigen Pfades über den Gesamtgraphen. Die konkrete Umsetzung dieser Beschränkung wird in @implementation behandelt.
 
-== Zwei-Phasen-Architektur: Build-Time und Query-Time
+== Laufzeitverhalten: Build-Phase und Query-Phase
 
 Das System ist in zwei klar getrennte Phasen unterteilt. In der Build-Phase wird der OSM-Extrakt eingelesen, das Clustering durchgeführt, die Gate Nodes identifiziert und der abstrakte Graph mit vorberechneten Kantengewichten konstruiert. Das Ergebnis dieser Phase, bestehend aus der Cluster-Zuordnung, den Gate
 Nodes und dem abstrakten Graphen mit vorberechneten Kantengewichten, wird
