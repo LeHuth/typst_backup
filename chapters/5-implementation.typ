@@ -352,3 +352,97 @@ Neben den in @sec:visualisierung beschriebenen WebSocket-Endpunkten stellt das B
 Die Trennung zwischen REST und WebSocket folgt einem einfachen Kriterium. Anfragen, deren Antwort von einem einzelnen Wert oder einer in sich abgeschlossenen Datenstruktur gebildet wird, nutzen REST. Anfragen, deren Mehrwert in der schrittweisen Beobachtung des Antwortaufbaus liegt, nutzen WebSocket. Die in der Tabelle aufgeführten Pfadendpunkte (/path, /hpa_path) sind dabei als Bequemlichkeitsschicht über demselben Generator-Code zu verstehen, der auch die WebSocket-Endpunkte bedient: Sie konsumieren den Generator vollständig und geben ausschließlich den finalen Zustand zurück. Dies ist insbesondere für den in @sec:hpastar erwähnten Benchmark-Adapter relevant, der zur Reduktion der Messstörungen ohnehin nicht an Zwischenzuständen interessiert ist.
 
 Die Visualisierungs-Endpunkte werden vom Frontend einmal beim Mount der Karten-Komponente abgerufen und ändern sich während des Anwendungslaufs nicht. Sie sind daher als statische, cacheable GeoJSON-Antworten konzipiert. Die Benchmark-Endpunkte sind nur verfügbar, wenn die Anwendung mit gesetzter DATABASE_URL gestartet wurde; sie werden in @sec:benchmark im Detail behandelt.
+
+== Benchmark-Framework <sec:benchmark>
+
+Der systematische Vergleich von A\* und HPA\* ist der zentrale empirische Beitrag dieser Arbeit. Damit der Vergleich aussagekräftig wird, ist eine Infrastruktur notwendig, die reproduzierbare Testfälle erzeugt, mehrere Algorithmen auf identischen Problemen laufen lässt und Ergebnisse für eine spätere Auswertung persistiert. Diese Infrastruktur ist als eigenständiges Python-Paket Benchmark im Backend organisiert und folgt methodisch dem von Sturtevant @Sturtevant:2012 vorgeschlagenen Vorgehen, übertragen auf die Eigenheiten von OSM-Straßennetzen.
+
+=== Architektur und Designprinzipien
+
+Das Benchmark-Paket ist um drei Designprinzipien herum aufgebaut. Erstens ist die Steuerung vollständig algorithmus-agnostisch: Weder der Problem-Generator noch der Runner kennen die konkreten Klassen AStarPathfinder oder HPAStarPathfinder. Beide kommunizieren ausschließlich über ein schlankes Protokoll, das in @lst:pathfinder_protocol gezeigt wird.
+
+#figure(
+  align(
+    left,
+    fhjcode(code: read("/code-snippets/pathfinder_protocol.py"), lastline: 6),
+  ),
+  caption: flex-caption(
+    [Algorithmus-agnostisches Protokoll für alle benchmarkbaren Pathfinder],[]
+  ),
+) <lst:pathfinder_protocol>
+\
+
+Zweitens existiert für jeden konkreten Algorithmus genau ein Adapter (`AStarAdapter`, `HPAStarAdapter`), dessen einzige Aufgabe es ist, den jeweiligen Generator vollständig zu konsumieren und das letzte ge-yieldete Zustands-Objekt in ein einheitliches PathResult-Datenobjekt zu überführen. Das Hinzufügen eines neuen Algorithmus zum Benchmark erfordert daher das Schreiben einer einzigen neuen Adapter-Klasse, ohne Änderungen am Runner, am Problem-Generator oder am Reporting.
+
+Drittens ist die Trennung zwischen einmaliger Problem-Generierung und wiederholter Problem-Ausführung explizit. Eine Problemmenge wird einmal erzeugt, als JSON-Datei persistiert und kann anschließend beliebig oft gegen verschiedene Algorithmen-Mengen oder Konfigurationen ausgeführt werden, ohne die Stichprobe selbst zu verändern. Diese Trennung ist Voraussetzung für reproduzierbare Vergleiche zwischen Konfigurationen.
+
+=== Problem-Generierung
+
+Die Erzeugung der Testfälle folgt dem Vorgehen aus Sturtevant 2012, §III. Aus der größten schwach zusammenhängenden Komponente des Graphen werden zufällige Knotenpaare gezogen. Für jedes Paar wird mittels einer Referenz-A\*-Suche die optimale Pfadlänge bestimmt. Die Probleme werden anschließend nach optimaler Distanz in äquidistante Buckets einsortiert (Standardbreite 500 m), und pro Bucket werden bis zu `max_per_bucket` Probleme aufgenommen. @lst:bucketing zeigt die zugehörige Schleife.
+
+#figure(
+  align(
+    left,
+    fhjcode(code: read("/code-snippets/bucketing.py"), lastline: 15),
+  ),
+  caption: flex-caption(
+    [Distance-Bucketing nach Sturtevant 2012],[]
+  ),
+) <lst:bucketing>
+\
+
+Zwei Eigenschaften dieses Vorgehens verdienen Erwähnung. Erstens stellt die Bucketing-Stratifikation sicher, dass die Stichprobe das gesamte Spektrum von Pfadlängen abdeckt und nicht durch die natürliche Häufigkeitsverteilung kurzer Pfade in dichten Stadtnetzen verzerrt wird. Ohne Bucketing wäre die Mehrheit zufällig gezogener Paare relativ kurz, da kurze Pfade in einem urbanen Graphen weit häufiger sind als lange. Für die Untersuchung der erwarteten Vorteile von HPA\* bei langen Pfaden ist eine ausreichende Repräsentation der höheren Distanzklassen jedoch zentral.
+
+Zweitens behält der Generator nur die größte zusammenhängende Sequenz vollständig gefüllter Buckets. Buckets, die nicht voll werden, etwa weil im untersuchten Graphausschnitt keine Pfade dieser Länge möglich sind, werden ebenso entfernt wie Lücken im Spektrum. Damit wird sichergestellt, dass alle Algorithmen über einen vergleichbaren, lückenlosen Distanzbereich evaluiert werden.
+
+=== Metriken
+
+Das Benchmark-Framework erhebt zwei Klassen von Metriken. Die erste Klasse umfasst pro Anfrage erhobene algorithmische Metriken, die direkt aus den Generator-Statistiken stammen und in @sec:astar (Tabelle 5.1) sowie in @tbl:hpastar_metriken aufgeführt sind. Aus diesen werden im Runner zwei abgeleitete Größen pro Pfadergebnis berechnet, die in @tbl:derived_metrics zusammengefasst sind.
+
+#figure(
+  caption: [Im Runner abgeleitete Metriken pro Pfadergebnis.],
+  table(
+    columns: (auto, 1fr),
+    align: (left, left),
+    table.header[Metrik][Bedeutung],
+    [`suboptimality_ratio`], [Verhältnis der vom Algorithmus gefundenen Pfadlänge zur optimalen, durch die Referenz-A\*-Suche bestimmten Pfadlänge. Werte von 1.0 entsprechen optimalen Pfaden; Werte größer 1.0 quantifizieren den Optimalitätsverlust einer heuristischen Variante.],
+    [`detour_factor`], [Verhältnis der gefundenen Pfadlänge zur Luftlinien-Distanz (Haversine) zwischen Start und Ziel. Charakterisiert die Topologie des Straßennetzes im Bereich des konkreten Pfades und ist algorithmen-übergreifend konstant für ein gegebenes Problem.],
+  ),
+) <tbl:derived_metrics>
+
+Die zweite Klasse umfasst Map-Level-Metriken, die das untersuchte Straßennetz als Ganzes charakterisieren und somit die Vergleichbarkeit von Ergebnissen zwischen verschiedenen geographischen Ausschnitten ermöglichen. Diese Metriken folgen Sturtevant @Sturtevant:2012, §IV, und sind in @tbl:map_metrics aufgeführt.
+
+#figure(
+  caption: [Map-Level-Metriken nach Sturtevant 2012, §IV.],
+  table(
+    columns: (auto, 1fr),
+    align: (left, left),
+    table.header[Metrik][Bedeutung],
+    [`num_states`, `num_edges`], [Anzahl Knoten und Kanten des Graphen.],
+    [`estimated_max_path_m`], [Heuristische obere Schranke des längsten kürzesten Pfades im Graphen, ermittelt durch ein Double-Sweep-Verfahren.],
+    [`dimension`], [Quadratischer Koeffizient einer Polynom-Regression über die kumulative BFS-Frontgröße (§IV.D). Werte nahe Null deuten auf eindimensionale Strukturen wie ländliche Hauptstraßen hin, größere Werte auf zweidimensionale Stadtnetze.],
+    [`transit_node_count`], [Mittlere Anzahl von Transit-Knoten in einem festen Radius (§IV.C), berechnet bei zwei verschiedenen Radien. Misst die Engstellen-Charakteristik des Netzes.],
+    [`heuristic_accuracy`], [Mittleres Verhältnis von Luftlinien- zu optimaler Pfaddistanz über die längsten Probleme. Werte nahe 1.0 zeigen, dass die Haversine-Heuristik den tatsächlichen Suchaufwand eng abschätzt.],
+  ),
+) <tbl:map_metrics>
+
+Diese Map-Metriken sind unabhängig vom Algorithmus und werden einmal pro Graphausschnitt erhoben. Sie erlauben es in Kapitel 7, beobachtete Unterschiede in den Algorithmus-Metriken kausal mit strukturellen Eigenschaften des Netzes zu verknüpfen, anstatt sie nur als Berlin-spezifische Beobachtungen darzustellen.
+
+=== CLI-Workflow
+
+Das Benchmark-Paket ist als ausführbares Python-Modul (`python -m Benchmark`) konzipiert und stellt vier Sub-Kommandos bereit. @tbl:benchmark_cli fasst sie zusammen.
+
+#figure(
+  caption: [Sub-Kommandos der Benchmark-CLI.],
+  table(
+    columns: (auto, 1fr),
+    align: (left, left),
+    table.header[Kommando][Funktion],
+    [`generate`], [Erzeugt eine stratifizierte Problemmenge und persistiert sie als JSON-Datei. Parameter steuern Stichprobengröße, Bucket-Breite und Maximum pro Bucket.],
+    [`run`], [Führt eine ausgewählte Algorithmen-Menge auf einer geladenen Problemmenge aus, schreibt die rohen Ergebnisse als JSON oder CSV und speichert den Lauf bei vorhandener Datenbankverbindung als Benchmark-Run.],
+    [`metrics`], [Berechnet Map-Level-Metriken (@tbl:map_metrics) für einen Graphausschnitt und gibt sie als JSON aus.],
+    [`report`], [Aggregiert eine zuvor gespeicherte Ergebnisdatei zu einer Bucket-weisen Zusammenfassung und gibt sie als JSON oder CSV aus.],
+  ),
+) <tbl:benchmark_cli>
+
+Die Aufteilung in vier Kommandos folgt der oben beschriebenen Trennung von Problem-Generierung, Ausführung und Reporting. In der Praxis besteht ein typischer Evaluations-Workflow aus einem einmaligen `generate`-Lauf pro Graphausschnitt, einem oder mehreren `run`-Aufrufen für die zu vergleichenden Algorithmen-Konfigurationen und abschließenden `metrics`- und `report`-Aufrufen für die statistische Auswertung. Die Persistenz in der Datenbank, die in @sec:datenbank beschrieben wird, erlaubt darüber hinaus die spätere Auswertung über mehrere Läufe und Graphausschnitte hinweg, ohne die Roh-JSON-Dateien aufbewahren zu müssen.
