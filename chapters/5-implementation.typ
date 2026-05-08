@@ -446,3 +446,68 @@ Das Benchmark-Paket ist als ausführbares Python-Modul (`python -m Benchmark`) k
 ) <tbl:benchmark_cli>
 
 Die Aufteilung in vier Kommandos folgt der oben beschriebenen Trennung von Problem-Generierung, Ausführung und Reporting. In der Praxis besteht ein typischer Evaluations-Workflow aus einem einmaligen `generate`-Lauf pro Graphausschnitt, einem oder mehreren `run`-Aufrufen für die zu vergleichenden Algorithmen-Konfigurationen und abschließenden `metrics`- und `report`-Aufrufen für die statistische Auswertung. Die Persistenz in der Datenbank, die in @sec:datenbank beschrieben wird, erlaubt darüber hinaus die spätere Auswertung über mehrere Läufe und Graphausschnitte hinweg, ohne die Roh-JSON-Dateien aufbewahren zu müssen.
+
+== Datenbankpersistenz <sec:datenbank>
+
+Die in @sec:benchmark beschriebene Auswertung setzt voraus, dass die Ergebnisse einzelner Benchmark-Läufe über die Lebenszeit eines Serverprozesses hinaus erhalten bleiben und algorithmen- sowie graphausschnitt-übergreifend abgefragt werden können. Die hierfür eingesetzte Persistenzschicht stützt sich auf PostgreSQL 16 und ist im Modul `Benchmark/store.py` sowie im Lifespan-Handler aus @sec:architektur implementiert. Sie umfasst drei Aspekte, die in den folgenden Unterabschnitten behandelt werden: das Schema der gespeicherten Daten, die Wahl der Datenbanktreiber sowie die Initialisierung beim Serverstart.
+
+=== Schemadesign
+
+Das Datenbankschema besteht aus zwei Tabellen, die in einer Eltern-Kind-Beziehung über eine Fremdschlüsselverknüpfung stehen. Die Tabelle `benchmark_runs` hält die Metadaten eines einzelnen Laufs, also die Konfiguration des Graphausschnitts (Mittelpunktkoordinaten, Radius, Netzwerktyp), die verwendete Algorithmen-Liste, den Zeitstempel sowie ein optionales Label. Die Tabelle `benchmark_results` enthält pro Algorithmus und pro Problem-Eintrag eine Zeile mit allen in @sec:astar und @sec:hpastar erfassten Metriken sowie der zugehörigen Problem-Beschreibung (Start- und Zielknoten, optimale Distanz, Bucket-Zuordnung). Die Beziehung wird über `run_id` mit `ON DELETE CASCADE` modelliert, sodass das Löschen eines Laufs die zugehörigen Ergebnisse mit entfernt und keine verwaisten Zeilen entstehen.
+
+Eine Designentscheidung dieses Schemas betrifft die Speicherung des konkreten Pfadverlaufs. Pro Pfadergebnis liegt die Knotenkoordinatensequenz als variabel lange Liste vor, deren Länge zwischen wenigen Knoten und mehreren Hundert variiert. Eine streng relationale Modellierung würde diese Sequenz in einer dritten Tabelle ablegen, mit einer Zeile je Pfadknoten. Bei einer typischen Stichprobe von einigen Hundert Pfadergebnissen pro Lauf und durchschnittlich mehreren Hundert Knoten pro Pfad führt dieser Ansatz schnell zu Tabellengrößen im sechsstelligen Bereich, ohne dass die einzelnen Knotenzeilen jemals selbst Gegenstand einer Anfrage werden. Pfade werden ausschließlich als Ganzes gelesen und im Frontend als GeoJSON-LineString verarbeitet (siehe @sec:rest). Die Implementierung wählt deshalb den pragmatischeren Weg und persistiert Pfade als `JSONB`-Spalte `path_coords`. Diese Spalte hält die vollständige Liste der `[lat, lon]`-Tupel; PostgreSQL speichert sie binär und erlaubt bei Bedarf einen indexierten Zugriff auf Teilstrukturen, was im aktuellen Anwendungsfall jedoch nicht genutzt wird. Der Trade-off ist bewusst: punktuelle Anfragen wie "welche Pfade durchqueren einen bestimmten Knoten" sind über `JSONB` deutlich teurer als über eine flache Knotentabelle, sind in der vorgesehenen Auswertung aber nicht erforderlich.
+
+=== Treiberwahl
+
+Die Anwendung greift in zwei verschiedenen Ausführungskontexten auf die Datenbank zu, die unterschiedliche I/O-Modelle verlangen. Der FastAPI-Webserver verarbeitet Anfragen in einer asynchronen Event-Schleife, in der jeder synchron blockierende Datenbankaufruf alle anderen gleichzeitig aktiven Anfragen pausieren würde. Das in @sec:benchmark beschriebene CLI-Werkzeug hingegen ist ein klassisch sequenzielles Skript, das die Algorithmen-Adapter nacheinander aufruft und seine Ergebnisse am Ende speichert; eine Event-Schleife wäre hier ohne Mehrwert.
+
+Aus dieser Asymmetrie folgt die Wahl zweier separater Treiber: asyncpg im Webserver, psycopg2 in der CLI. asyncpg ist ein nativer Asyncio-Treiber für PostgreSQL und integriert sich direkt in die `await`-basierten Endpunkte aus @sec:rest. Der CLI-seitige psycopg2 ist die langjährig etablierte synchrone Bibliothek und vermeidet die im CLI-Kontext überflüssige Kapselung jedes Datenbankaufrufs in `asyncio.run`. Beide Treiber sprechen dasselbe Postgres-Wire-Protokoll und sehen identische Daten; die Trennung beschränkt sich auf den Anwendungs-Code.
+
+Eine Konsequenz dieses Vorgehens ist eine Verdopplung der `CREATE TABLE`-Anweisungen: einmal in der CLI-seitigen Initialisierungsfunktion `init_db` und einmal im Lifespan-Handler des Webservers. Beide Stellen sind idempotent (`CREATE TABLE IF NOT EXISTS`) und referenzieren dasselbe Schema. Eine sauberere Lösung wäre die Auslagerung in ein Migrations-Tool wie Alembic, das eine kanonische Quelle für Schema-Änderungen verwaltet. Im Rahmen dieser Arbeit, in der das Schema während der gesamten Untersuchung stabil ist, wäre der dafür notwendige Aufwand unverhältnismäßig.
+
+=== Initialisierung und Optionalität
+
+Die Datenbankanbindung wird beim Serverstart im Lifespan-Handler optional aufgebaut. Ist die Umgebungsvariable `DATABASE_URL` gesetzt, erstellt der Handler einen asyncpg-Verbindungspool und führt die idempotente Schema-Initialisierung aus. Fehlt die Variable, läuft der Server ohne Datenbankanbindung, und alle in @sec:rest aufgeführten Benchmark-Endpunkte antworten mit einem Statuscode `503 Service Unavailable`. Die Pathfinding-Endpunkte bleiben in beiden Fällen verfügbar, da sie ausschließlich auf den vorberechneten In-Memory-Strukturen aus @sec:hpastar arbeiten.
+
+Diese explizite Optionalität ist eine bewusste Designentscheidung. Sie erlaubt es zum einen, die Anwendung in Demonstrationsszenarien ohne Datenbankcontainer zu starten, etwa für die in @sec:visualisierung gezeigte Live-Visualisierung. Zum anderen entkoppelt sie das Hauptanliegen der Anwendung, die interaktive Algorithmenausführung, von der ausschließlich für die Evaluation benötigten Persistenz. Eine starre Kopplung würde dazu führen, dass jeder Serverstart einen verfügbaren Postgres-Container voraussetzt, was die Verwendung der Anwendung in Umgebungen ohne aufgebauten Container-Stack erschweren würde.
+
+#todo("Optional: kurzes Listing der bedingten Pool-Initialisierung im Lifespan-Handler (lifespan_db_init.py).")
+
+== Containerisierung <sec:container>
+
+Die in den vorausgegangenen Abschnitten beschriebenen Komponenten werden als voneinander isolierte Container bereitgestellt und über Docker Compose orchestriert. Die zentrale Datei `docker-compose.yml` im Projekt-Root deklariert die beteiligten Dienste, ihre Abhängigkeiten und die zwischen Hostsystem und Containern geteilten Verzeichnisse. Die Containerisierung erfüllt in der vorliegenden Arbeit zwei zentrale Funktionen: Sie sichert die Reproduzierbarkeit der Benchmark-Umgebung und beseitigt Versionskonflikte zwischen den Laufzeiten von Backend (Python 3.11), Frontend (Node.js für Nuxt 4) und Dokumentation (Node.js für VitePress).
+
+=== Dienste
+
+Die Compose-Konfiguration umfasst vier Dienste. Der Dienst `postgres` läuft auf dem offiziellen `postgres:16`-Image und stellt die in @sec:datenbank beschriebene Persistenzschicht bereit. Der Dienst `backend` baut das in `./backend/Dockerfile` definierte Image mit der FastAPI-Anwendung samt OSMnx-, NetworkX- und asyncpg-Abhängigkeiten. Der Dienst `frontend` baut analog das Nuxt-4-Projekt aus `./frontend/Dockerfile` und bedient den in @sec:visualisierung beschriebenen Browser-Client. Der vierte Dienst `docs` rendert eine begleitende VitePress-Dokumentation des Projekts. Diese Dokumentation ist nicht Bestandteil der wissenschaftlichen Arbeit; sie unterstützt während der Entwicklung das Nachschlagen von API-Konventionen und ist im laufenden System unter Port 4000 erreichbar.
+
+Jeder Dienst wird auf einen Host-Port abgebildet (`8000` für das Backend, `3000` für das Frontend, `5432` für PostgreSQL, `4000` für die Dokumentation), sodass die Komponenten gleichzeitig vom Hostsystem aus zugänglich sind. Diese Port-Aufteilung dient ausschließlich der Entwicklungsumgebung. In einer produktiven Bereitstellung würde der direkte Zugriff auf den Datenbank-Port unterbunden und ausschließlich das Frontend hinter einem Reverse-Proxy exponiert.
+
+=== Volumes und Persistenz
+
+Drei benannte Volumes regeln die Persistenz von Daten, die einen Container-Neubau überdauern müssen. Das Volume `postgres-data` ist an `/var/lib/postgresql/data` gebunden und enthält den eigentlichen Datenbankzustand. Das Volume `backend-data` enthält die in @sec:datenbeschaffung beschriebene GraphML-Datei, sodass nach einem Neustart der OSM-Graph nicht erneut über die Overpass-API bezogen werden muss; angesichts der Größe des Berliner Untersuchungsgebiets (siehe @sec:datenbeschaffung) erspart diese Persistenz pro Neustart mehrere Sekunden Wartezeit und entlastet zugleich die externe Overpass-Infrastruktur. Das Volume `backend-cache` enthält den HTTP-Cache von OSMnx selbst und greift auf einer tieferen Ebene als der GraphML-Cache: Er konserviert die Antworten einzelner Overpass-Anfragen, die OSMnx beim Aufbau eines Graphen stellt, und ist insbesondere dann relevant, wenn weitere Untersuchungsgebiete mit teils überlappenden Bounding-Boxes geladen werden.
+
+Eine andere Rolle übernimmt der Bind-Mount `./backend/app:/app`, der das Quellverzeichnis des Backends direkt in den Container einblendet. Dadurch übernimmt der Container Änderungen am Quellcode ohne Neubau des Images; diese Hot-Reload-Konfiguration ist auf die Entwicklung zugeschnitten und entfällt in einem produktiven Image, das den Code stattdessen in das Image kopiert. Eine analoge Konfiguration besteht für das Frontend, in der zusätzlich ein anonymes Volume `/app/node_modules` den Bind-Mount überdeckt; ohne diese Überlagerung würde das im Container installierte `node_modules` durch das im Hostsystem unter Umständen leere Verzeichnis verdrängt, was den Frontend-Build unmittelbar funktionsunfähig machen würde.
+
+#figure(
+  caption: [Volume-Übersicht des Compose-Stacks.],
+  table(
+    columns: (auto, auto, 1fr),
+    align: (left, left, left),
+    table.header[*Volume*][*Typ*][*Zweck*],
+    [`postgres-data`],          [Named],     [Datenbank-Zustand für Benchmark-Persistenz aus @sec:datenbank.],
+    [`backend-data`],           [Named],     [GraphML-Cache (`graph.graphml`) zur Vermeidung wiederholter Overpass-Anfragen.],
+    [`backend-cache`],          [Named],     [OSMnx-eigener HTTP-Antwort-Cache.],
+    [`./backend/app:/app`],     [Bind],      [Hot-Reload des Backend-Quellcodes während der Entwicklung.],
+    [`./frontend:/app`],        [Bind],      [Hot-Reload des Frontend-Quellcodes.],
+    [`/app/node_modules`],      [Anonym],    [Schutz der containerseitigen Node-Abhängigkeiten vor dem Frontend-Bind-Mount.],
+  ),
+) <tbl:volumes>
+
+=== Service-Abhängigkeiten und Konfiguration
+
+Die Reihenfolge des Container-Starts ist über `depends_on` zwischen den Diensten festgelegt. Der Backend-Container startet erst, wenn der Postgres-Container den definierten Healthcheck `pg_isready -U pfad -d pfadgenossin` erfolgreich besteht, und nicht bereits dann, wenn der Postgres-Prozess gestartet ist. Diese Unterscheidung ist relevant, weil PostgreSQL nach dem Prozess-Start eine kurze, aber nicht zu vernachlässigende Initialisierungsphase durchläuft, in der eingehende Verbindungen abgewiesen werden. Ohne den Healthcheck würde der asyncpg-Pool im Lifespan-Handler aus @sec:datenbank gelegentlich auf eine noch nicht annahmebereite Datenbank treffen und mit einem Verbindungsfehler abbrechen. Der Frontend-Container ist analog vom Backend abhängig, allerdings ohne Healthcheck, da das Frontend einen kurzzeitig nicht verfügbaren Backend-Endpunkt vorübergehend toleriert und der Benutzer im Zweifelsfall ein erneutes Laden auslösen kann.
+
+Konfigurationsparameter werden über Umgebungsvariablen mit Defaultwerten an die Container weitergereicht. Die Syntax `${VAR:-default}` in der Compose-Datei erlaubt es, dieselbe Konfiguration sowohl mit als auch ohne lokale `.env`-Datei zu starten. Drei Variablen sind dabei relevant: `DATABASE_URL` adressiert den Postgres-Dienst aus dem Backend-Container heraus über den Compose-internen DNS-Namen `postgres`; `CORS_ORIGINS` legt die zulässigen Frontend-Ursprünge für die in @sec:rest beschriebenen REST-Endpunkte fest; `NUXT_PUBLIC_API_BASE` informiert das Frontend über die zur Laufzeit gültige Backend-Adresse. Die Default-Werte zielen auf die lokale Entwicklung ab; produktive Deployments setzen die Variablen in einer Umgebungsdatei oder über das verwendete Deployment-Werkzeug.
+
+Eine bewusste Eigenschaft des Stacks ist die Beschränkung auf Docker Compose anstelle eines Cluster-Orchestrators wie Kubernetes. Compose ist für Einzelhost-Stacks wie die hier vorliegende Entwicklungs- und Evaluationsumgebung deklarativ ausreichend; die zusätzlichen Garantien eines Cluster-Orchestrators bezüglich Skalierung, Lastverteilung und Selbstheilung wären für die im Rahmen dieser Arbeit durchgeführten, sequenziellen Benchmark-Läufe ohne Wirkung. Eine Migration auf Kubernetes wäre möglich, ist aber nicht Gegenstand der vorliegenden Implementierung.
