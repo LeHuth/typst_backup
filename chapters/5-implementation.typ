@@ -405,7 +405,7 @@ Das Benchmark-Framework erhebt zwei Klassen von Metriken. Die erste Klasse umfas
     columns: (auto, 1fr),
     align: (left, left),
     table.header[Metrik][Bedeutung],
-    [`suboptimality_ratio`], [Verhältnis der vom Algorithmus gefundenen Pfadlänge zur optimalen, durch die Referenz-A\*-Suche bestimmten Pfadlänge. Werte von 1.0 entsprechen optimalen Pfaden; Werte größer 1.0 quantifizieren den Optimalitätsverlust einer heuristischen Variante.],
+    [`suboptimality_ratio`], [Verhältnis der vom Algorithmus gefundenen Pfadlänge zur optimalen, durch die Referenz-A\*-Suche bestimmten Pfadlänge @Botea:2004[S.~18]. Werte von 1.0 entsprechen optimalen Pfaden; Werte größer 1.0 quantifizieren den Optimalitätsverlust einer heuristischen Variante. Die Metrik entspricht der von Botea et al. definierten Fehlerformel $e = (h_l - o_l) / o_l dot 100$, ausgedrückt als Verhältnis statt als Prozentwert.],
     [`detour_factor`], [Verhältnis der gefundenen Pfadlänge zur Luftlinien-Distanz (Haversine) zwischen Start und Ziel. Charakterisiert die Topologie des Straßennetzes im Bereich des konkreten Pfades und ist algorithmen-übergreifend konstant für ein gegebenes Problem.],
   ),
 ) <tbl:derived_metrics>
