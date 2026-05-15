@@ -2,6 +2,8 @@
 #import "@preview/codly:1.3.0": *
 #import "@preview/codly-languages:0.1.1": *
 #show: codly-init.with()
+
+
 = Implementation <implementation>
 
 == Systemarchitektur <sec:architektur>
@@ -286,7 +288,16 @@ Eine Kernanforderung der Anwendung ist die schrittweise Live-Darstellung des Suc
 
 Das Protokoll ist asymmetrisch und zustandslos auf Verbindungsebene. Der Client sendet pro Anfrage eine einzelne JSON-Nachricht mit Start- und Zielkoordinaten sowie zwei optionalen Steuerparametern: realtime entscheidet, ob alle Zwischenzustände gestreamt werden oder nur das Endergebnis, und delay_ms erlaubt es, einen künstlichen Zeitversatz zwischen Nachrichten einzufügen, um die Visualisierung in der Demonstration verlangsamen zu können. Der Server antwortet mit einer Folge von Zustands-Nachrichten, deren Format unmittelbar dem in @sec:astar definierten Generator-Yield entspricht. Jede Nachricht trägt ein type-Feld mit einem von vier Werten: visiting für einen aus der Open Set entnommenen Knoten, exploring für einen erstmals oder verbessert in die Open Set eingefügten Knoten, complete für das gefundene Pfadergebnis sowie no_path für den Fall einer erfolglosen Suche. Jede Nachricht enthält zusätzlich das Feld stats mit dem aktuellen Stand der in @tbl:hpastar_metriken aufgeführten Laufzeit- und Strukturmetriken.
 
-Das Backend stellt drei separate WebSocket-Endpunkte bereit: /ws für A\*, /ws/hpa für HPA\* sowie /ws/hpa_partial für die in @sec:hpastar erwähnte Debug-Variante. Die Trennung in eigene Endpunkte statt eines gemeinsamen Endpunkts mit Algorithmus-Parameter wurde aus Gründen der Übersichtlichkeit gewählt; alle drei Endpunkte folgen demselben Nachrichtenschema und unterscheiden sich nur in dem aufgerufenen Generator.
+#let code(lang: "html", body) = highlight(
+  radius: 1pt,
+  extent: 0.5pt,
+  fill: silver,
+  top-edge: 1.1em,
+  bottom-edge: -0.3em,
+  raw(body, lang: lang)
+)
+
+Das Backend stellt drei separate WebSocket-Endpunkte bereit: #code("/ws") für A\*, /ws/hpa für HPA\* sowie  #code("/ws/hpa_partial") für die in @sec:hpastar erwähnte Debug-Variante. Die Trennung in eigene Endpunkte statt eines gemeinsamen Endpunkts mit Algorithmus-Parameter wurde aus Gründen der Übersichtlichkeit gewählt; alle drei Endpunkte folgen demselben Nachrichtenschema und unterscheiden sich nur in dem aufgerufenen Generator.
 
 === Serverseitiger Endpunkt
 
@@ -329,7 +340,7 @@ Auf dem in main.py konfigurierten Frontend, dargestellt in PathfinderMap.vue, we
 == REST-API <sec:rest>
 
 Neben den in @sec:visualisierung beschriebenen WebSocket-Endpunkten stellt das Backend eine konventionelle REST-API bereit, die für nicht-streamende Pfadanfragen, den Abruf statischer Visualisierungsdaten und die Persistenz von Benchmark-Ergebnissen genutzt wird. Alle Endpunkte sind in main.py definiert und nutzen FastAPIs Pydantic-basierte Request- und Response-Modellierung. Eine vollständige OpenAPI-Spezifikation wird zur Laufzeit unter /docs automatisch generiert. @tbl:rest_endpoints listet die Endpunkte gruppiert nach Funktion auf.
-
+#show figure: set block(breakable: true)
 #figure(
   caption: [REST-Endpunkte des Backends.],
   table(
@@ -351,7 +362,7 @@ Neben den in @sec:visualisierung beschriebenen WebSocket-Endpunkten stellt das B
 
 Die Trennung zwischen REST und WebSocket folgt einem einfachen Kriterium. Anfragen, deren Antwort von einem einzelnen Wert oder einer in sich abgeschlossenen Datenstruktur gebildet wird, nutzen REST. Anfragen, deren Mehrwert in der schrittweisen Beobachtung des Antwortaufbaus liegt, nutzen WebSocket. Die in der Tabelle aufgeführten Pfadendpunkte (/path, /hpa_path) sind dabei als Bequemlichkeitsschicht über demselben Generator-Code zu verstehen, der auch die WebSocket-Endpunkte bedient: Sie konsumieren den Generator vollständig und geben ausschließlich den finalen Zustand zurück. Dies ist insbesondere für den in @sec:hpastar erwähnten Benchmark-Adapter relevant, der zur Reduktion der Messstörungen ohnehin nicht an Zwischenzuständen interessiert ist.
 
-Die Visualisierungs-Endpunkte werden vom Frontend einmal beim Mount der Karten-Komponente abgerufen und ändern sich während des Anwendungslaufs nicht. Sie sind daher als statische, cacheable GeoJSON-Antworten konzipiert. Die Benchmark-Endpunkte sind nur verfügbar, wenn die Anwendung mit gesetzter DATABASE_URL gestartet wurde; sie werden in @sec:benchmark im Detail behandelt.
+Die Visualisierungs-Endpunkte werden vom Frontend einmal beim Mount der Karten-Komponente abgerufen und ändern sich während des Anwendungslaufs nicht. Sie sind daher als statische, cacheable GeoJSON-Antworten konzipiert. Die Benchmark-Endpunkte sind nur verfügbar, wenn die Anwendung mit gesetzter DATABASE_URL gestartet wurde; sie werden in \@sec:benchmark im Detail behandelt.
 
 == Benchmark-Framework <sec:benchmark>
 
@@ -445,7 +456,7 @@ Das Benchmark-Paket ist als ausführbares Python-Modul (`python -m Benchmark`) k
   ),
 ) <tbl:benchmark_cli>
 
-Die Aufteilung in vier Kommandos folgt der oben beschriebenen Trennung von Problem-Generierung, Ausführung und Reporting. In der Praxis besteht ein typischer Evaluations-Workflow aus einem einmaligen `generate`-Lauf pro Graphausschnitt, einem oder mehreren `run`-Aufrufen für die zu vergleichenden Algorithmen-Konfigurationen und abschließenden `metrics`- und `report`-Aufrufen für die statistische Auswertung. Die Persistenz in der Datenbank, die in @sec:datenbank beschrieben wird, erlaubt darüber hinaus die spätere Auswertung über mehrere Läufe und Graphausschnitte hinweg, ohne die Roh-JSON-Dateien aufbewahren zu müssen.
+Die Aufteilung in vier Kommandos folgt der oben beschriebenen Trennung von Problem-Generierung, Ausführung und Reporting. In der Praxis besteht ein typischer Evaluations-Workflow aus einem einmaligen `generate`-Lauf pro Graphausschnitt, einem oder mehreren `run`-Aufrufen für die zu vergleichenden Algorithmen-Konfigurationen und abschließenden `metrics`- und `report`-Aufrufen für die statistische Auswertung. Die Persistenz in der Datenbank, die in \@sec:datenbank beschrieben wird, erlaubt darüber hinaus die spätere Auswertung über mehrere Läufe und Graphausschnitte hinweg, ohne die Roh-JSON-Dateien aufbewahren zu müssen.
 
 == Datenbankpersistenz <sec:datenbank>
 

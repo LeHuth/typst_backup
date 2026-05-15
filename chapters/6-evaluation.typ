@@ -50,7 +50,7 @@ Die zentrale Qualitätsmetrik ist die in @tbl:derived_metrics definierte `subopt
 Über alle 14 Konfigurationen und 7.140 HPA\*-Anfragen liegen Median, Mittelwert und Maximum der `suboptimality_ratio` bei 1,0; die größte beobachtete Abweichung liegt bei etwa $10^(-15)$ und damit auf dem Niveau des Fließkomma-Rauschens. HPA\* findet in dieser Implementierung den optimalen Pfad in jeder einzelnen Anfrage. @fig:path_quality_scatter macht diesen Befund konkret: für die 490 Test-Probleme im Berliner Datensatz bei Grid-Size 10 liegt jedes Punktepaar aus A\*-Distanz und HPA\*-Distanz exakt auf der Diagonalen $y = x$.
 
 #figure(
-  image("../figures/path_quality_scatter.png", width: 100%),
+  image("../figures/plot_path_quality.png", width: 100%),
   caption: [Vergleich der gefundenen Pfaddistanzen für A\* und HPA\* im Berliner Datensatz bei Grid-Size 10. Jeder Punkt entspricht einem Testproblem; alle 490 Punkte liegen auf der Diagonalen $y = x$.],
 ) <fig:path_quality_scatter>
 
@@ -71,7 +71,7 @@ Die Wirkung von HPA\* auf die Laufzeit hängt von zwei Faktoren ab: der Länge d
 Für jeden Datensatz und jede Grid-Size lässt sich der Speedup als Funktion der Pfadlänge auftragen. @fig:speedup_pathlength_grids zeigt diese Kurven für den Berliner Datensatz; die Darstellung für Ireland folgt demselben Muster.
 
 #figure(
-  image("../figures/speedup_pathlength_grids.png", width: 100%),
+  image("../figures/plot_speedup_vs_pathlength_all_grids.png", width: 100%),
   caption: [Speedup von HPA\* gegenüber A\* als Funktion der Pfadlänge (Bucket-ID) für sieben Grid-Sizes im Berliner Datensatz. Die horizontale Linie bei 1,0 markiert den Break-Even; oberhalb arbeitet HPA\* schneller, unterhalb A\*.],
 ) <fig:speedup_pathlength_grids>
 
@@ -88,7 +88,7 @@ Der Mechanismus dahinter ist algorithmischer Natur. Eine HPA\*-Anfrage trägt un
 Aggregiert man den Speedup über Bucket-Bereiche, ergibt sich eine direkte Abhängigkeit von der Grid-Size. @fig:speedup_gridsize zeigt diese Funktion für zwei Pfadlängen-Klassen je Datensatz.
 
 #figure(
-  image("../figures/speedup_gridsize.png", width: 100%),
+  image("../figures/plot_speedup_vs_gridsize_berlinv2.png", width: 100%),
   caption: [Mittlerer Speedup als Funktion der Grid-Size für zwei Pfadlängen-Klassen (kurze Pfade in den Buckets 0–15, lange Pfade ab Bucket 30) im Berliner und im irischen Datensatz. Werte oberhalb der Referenzlinie y = 1 bedeuten, dass HPA\* schneller arbeitet als A\*. Fehlerbalken zeigen die Standardabweichung.],
 ) <fig:speedup_gridsize>
 
@@ -105,7 +105,7 @@ Aus diesen Verläufen folgt eine Designaussage: Innerhalb des untersuchten Berei
 Die Laufzeit einer HPA\*-Anfrage gliedert sich in zwei dominante Phasen (siehe @sec:query-phase): die abstrakte Suche auf dem Gate-Graphen und die anschließende Verfeinerung der gefundenen Gate-Sequenz. @fig:hpa_phases zeigt die mittlere Aufteilung dieser beiden Phasen je Grid-Size und Datensatz.
 
 #figure(
-  image("../figures/hpa_phases.png", width: 100%),
+  image("../figures/plot_hpa_runtime_breakdown.png", width: 100%),
   caption: [Aufteilung der mittleren HPA\*-Anfragezeit in abstrakte Suche und Verfeinerung, je Grid-Size und Datensatz. Gestapelte Balken zeigen die absoluten Anteile in Millisekunden.],
 ) <fig:hpa_phases>
 
@@ -122,7 +122,7 @@ Die Aufschlüsselung erklärt das Crossover-Verhalten aus dem vorigen Abschnitt:
 Neben der Laufzeit ist die Anzahl der vom Pathfinder expandierten Knoten ein zentraler Effizienzindikator. Sie bemisst den algorithmischen Aufwand unabhängig von Implementierungs-Konstanten und macht den eigentlichen Vorteil der hierarchischen Abstraktion sichtbar.
 
 #figure(
-  image("../figures/search_space_reduction.png", width: 100%),
+  image("../figures/plot_search_space_reduction.png", width: 100%),
   caption: [Verhältnis der mittleren besuchten Knoten A\*/HPA\* je Bucket für sieben Grid-Sizes, je Datensatz. Werte oberhalb der Referenzlinie y = 1 bedeuten, dass HPA\* weniger Knoten expandiert.],
 ) <fig:search_space_reduction>
 
@@ -133,7 +133,7 @@ Die Knoten-Reduktion wächst in beiden Datensätzen monoton mit der Pfadlänge u
 @fig:visited_nodes ergänzt diese relative Sicht um die absoluten Größenordnungen bei Grid-Size 10.
 
 #figure(
-  image("../figures/visited_nodes_comparison.png", width: 100%),
+  image("../figures/plot_visited_nodes_comparison.png", width: 100%),
   caption: [Mittlere Anzahl besuchter Knoten je Bucket für A\* und HPA\* bei Grid-Size 10, je Datensatz, log-y. Die Differenz zwischen den Kurven illustriert den Suchraum-Vorteil in absoluten Werten.],
 ) <fig:visited_nodes>
 
@@ -150,7 +150,7 @@ Die Knoten-Reduktion fällt durchgehend stärker aus als die in @sec:eval-runtim
 Über die Anzahl expandierter Knoten hinaus lässt sich der Suchaufwand auch über die maximale Belegung der A\*-Priority-Queue (Open Set) bewerten. Diese Größe bestimmt den Spitzenspeicherbedarf der Suche und ist im Gegensatz zur reinen Knotenzahl direkt für die in @sec:motivation angesprochene Frage des gerätebasierten Routings auf ressourcenbeschränkten Endgeräten relevant: Während die Gesamtzahl expandierter Knoten primär die Laufzeit beeinflusst, bestimmt das Maximum der Open-Set-Größe, wie viel Arbeitsspeicher die Suche zu ihrem Höhepunkt anfordert.
 
 #figure(
-  image("../figures/peak_memory.png", width: 100%),
+  image("../figures/plot_peak_memory.png", width: 100%),
   caption: [Mittlere maximale Open-Set-Größe je Bucket für A\* und HPA\* bei Grid-Size 10, je Datensatz, log-y. Höhere Werte bedeuten höheren Spitzenspeicherbedarf der Suche.],
 ) <fig:peak_memory>
 
@@ -165,7 +165,7 @@ Diese strukturelle Eigenschaft ist für mobile Endgeräte relevanter als der rei
 Im Gegensatz zu A\* verlangt HPA\* eine einmalige Build-Phase, in der für jeden Cluster die optimalen Pfade zwischen allen Gate-Paaren vorab berechnet werden (siehe @sec:build-phase). Dieser Aufwand fällt vor der ersten Anfrage an und muss durch die anschließenden Anfragen amortisiert werden. Die folgenden Abbildungen quantifizieren diesen Aufwand und seine strukturelle Skalierung.
 
 #figure(
-  image("../figures/precomputation_vs_gridsize.png", width: 100%),
+  image("../figures/plot_precomputation_vs_gridsize.png", width: 100%),
   caption: [Mittlere Vorberechnungszeit als Funktion der Grid-Size für beide Datensätze, log-y. Die sekundäre x-Achse zeigt die resultierende Anzahl Cluster ($"Grid-Size"^2$).],
 ) <fig:precomputation>
 
@@ -176,7 +176,7 @@ Die Vorberechnung sinkt in beiden Datensätzen monoton mit wachsender Grid-Size.
 Diese Skalierung ist auf den ersten Blick kontraintuitiv, weil mehr Cluster nach mehr Build-Arbeit aussehen. Die Auflösung liegt in der Struktur der Build-Phase. Pro Cluster wird für jede Kombination aus Entry- und Exit-Gate ein voller A\*-Lauf innerhalb des Clusters durchgeführt; bei $k$ Entry- und Exit-Gates also $k^2$ A\*-Berechnungen. Mit wachsender Grid-Size schrumpft jeder einzelne Cluster, und zwar in zwei Dimensionen gleichzeitig: er enthält weniger Knoten und entsprechend weniger Gates an seiner Grenze. @fig:cluster_stats zeigt das konkret.
 
 #figure(
-  image("../figures/cluster_stats.png", width: 100%),
+  image("../figures/plot_characterization_table.png", width: 100%),
   caption: [Mittlere Anzahl Knoten pro Cluster als Funktion der Grid-Size für beide Datensätze. Zusätzliche Linien für Median, Minimum und Maximum optional.],
 ) <fig:cluster_stats>
 
@@ -187,7 +187,7 @@ Im Berliner Datensatz sinkt die mittlere Cluster-Knotenzahl von etwa 4.400 bei G
 Eine zweite Konsequenz der größeren Grid-Size ist allerdings, dass der abstrakte Graph mehr Knoten enthält, weil jeder Cluster-Übergang einen eigenen Gate-Knoten erzeugt. @fig:abstract_search zeigt, dass die abstrakte Suche pro Anfrage entsprechend mehr Knoten besucht.
 
 #figure(
-  image("../figures/abstract_search.png", width: 100%),
+  image("../figures/plot_abstract_graph_vs_gridsize.png", width: 100%),
   caption: [Mittlere Anzahl in der abstrakten Suche besuchter Knoten je Anfrage, in Abhängigkeit von der Grid-Size, für beide Datensätze. Wächst monoton mit der Grid-Size und dient als Indikator für die Größe des abstrakten Graphen.],
 ) <fig:abstract_search>
 

@@ -85,7 +85,7 @@
 #include "./chapters/5-implementation.typ"
 #pagebreak()
 
-//#include "./chapters/6-evaluation.typ"
+#include "./chapters/6-evaluation.typ"
 //#pagebreak()
 
 //#include "./chapters/7-conclusion.typ"
