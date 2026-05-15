@@ -2,13 +2,13 @@
 
 = Introduction
 
-== Motivation
+== Motivation <sec:motivation>
 Routenplanung und Navigation sind ein alltäglicher Bestandteil des modernen Lebens. Anwendungen wie Google Maps oder OpenStreetMap-basierte Dienste ermöglichen es mobilen Endnutzern, innerhalb weniger Millisekunden präferierte Pfade zu berechnen. Je nach Fortbewegungsmittel etwa für das Auto, zu Fuß oder per Fahrrad.
 Straßennetzwerke lassen sich als gewichtete Graphen modellieren, in denen Kreuzungen als Knoten und Straßenabschnitte als Kanten repräsentiert werden. Das Straßennetz einer Großstadt wie Berlin umfasst dabei #todo([Knotenzahl eigene Messung via osmnx])  Knoten. Der klassische A\*-Algorithmus @Hart:1968 stößt bei Graphen dieser Größenordnung an praktische Grenzen: Trotz seiner heuristischen, zielgerichteten Suchstrategie müssen in dichten urbanen Netzwerken bei einer einzelnen Anfrage potenziell tausende von Knoten expandiert werden @Botea:2004. Dies führt in zwei relevanten Szenarien zu Problemen: Beim zentralisierten Routing auf Servern entstehen unter hoher Last erhebliche Rechenkosten; beim dezentralisierten, gerätebasierten Routing kann die erforderliche Rechenleistung die Kapazität mobiler Endgeräte übersteigen und zu spürbaren Leistungseinbußen führen.
 Ein vielversprechender Lösungsansatz liegt in der Einführung einer hierarchischen Struktur. Durch eine aufwändige Vorverarbeitung des Graphen – die einmalig offline durchgeführt wird – kann der Suchraum zur Anfragezeit erheblich eingeschränkt werden @Botea:2004. Ein Großteil der Rechenarbeit steht damit bei jeder Nutzeranfrage bereits vorberechnet zur Verfügung, was die Antwortzeit drastisch reduziert.
 Ziel dieser Arbeit ist die Konzeption und prototypische Implementierung eines solchen hierarchischen Routingsystems auf Basis realer OpenStreetMap-Daten.
 
-== Zielsetzung
+== Zielsetzung <sec:ziele>
 Ziel dieser Arbeit ist die Untersuchung, inwiefern eine hierarchische Erweiterung des A\*-Algorithmus gegenüber dem klassischen A\* messbare Einsparungen an Rechenressourcen erzielt, bei gleichzeitig akzeptabler Pfadqualität. Als Grundlage dient eine reale OpenStreetMap-Karte, auf der beide Algorithmen mit identischen Start- und Zielpunkten ausgeführt und anschließend verglichen werden.
 Der Vergleich erfolgt anhand folgender Metriken:
 
