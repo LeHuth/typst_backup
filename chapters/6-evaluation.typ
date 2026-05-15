@@ -11,7 +11,7 @@ Die Evaluation untersucht die Wirkung zweier Parameter auf das Verhalten von HPA
 Zwei OSM-Auszüge, jeweils mit 10 km Radius und dem Netzwerktyp `bike`, bilden die experimentelle Grundlage. Der Berliner Auszug repräsentiert ein großstädtisches Straßennetz mit hoher Knoten- und Kantenzahl auf engem geographischen Raum. Der irische Auszug aus der Region südlich von Athy steht für ein ländliches Straßennetz mit deutlich geringerer Knotenzahl bei identischem geographischen Radius. @tbl:datasets fasst die zentralen Eigenschaften beider Datensätze zusammen.
 
 #figure(
-  caption: [Charakterisierung der beiden Evaluations-Datensätze. Sturtevant-Map-Metriken (`dimension`, `transit_node_count`) sind methodisch in @tbl:map_metrics eingeführt und werden noch nachgereicht.],
+  caption: [Charakterisierung der beiden Evaluations-Datensätze. Die Sturtevant-`dimension` ist in @tbl:map_metrics methodisch eingeführt; sie misst, wie stark sich die Knotenanzahl innerhalb eines Distanzradius mit dem Radius vergrößert, und ist damit ein graphstruktureller Komplexitätsindikator.],
   table(
     columns: (1.6fr, 1fr, 1fr),
     align: (left, right, right),
@@ -23,9 +23,7 @@ Zwei OSM-Auszüge, jeweils mit 10 km Radius und dem Netzwerktyp `bike`, bilden d
     [Mittlerer Knotengrad],            [1,19],            [1,18],
     [Heuristische Genauigkeit],        [0,838],           [0,754],
     [Mittlerer Detour-Faktor],         [1,206],           [1,375],
-    [`dimension` (Sturtevant)],        [#todo[t. b. d.]], [#todo[t. b. d.]],
-    [`transit_node_count` (r = 500 m)],  [#todo[t. b. d.]], [#todo[t. b. d.]],
-    [`transit_node_count` (r = 2000 m)], [#todo[t. b. d.]], [#todo[t. b. d.]],
+    [`dimension` (Sturtevant)],        [3,68],            [#todo[t. b. d.]],
     [Bucket-Bereich der Stichprobe],   [1–49],            [0–52],
     [Anzahl Test-Probleme],            [490],             [530],
   ),
@@ -33,7 +31,7 @@ Zwei OSM-Auszüge, jeweils mit 10 km Radius und dem Netzwerktyp `bike`, bilden d
 
 Trotz fast identischen mittleren Knotengrads (1,19 gegenüber 1,18) unterscheiden sich die beiden Datensätze um mehr als eine Größenordnung in der absoluten Knotenzahl. Die Auswahl zielt damit bewusst nicht auf strukturelle Dichte-Variation im graphentheoretischen Sinn, sondern auf den Kontrast zwischen einem urbanen und einem ländlichen Straßennetz bei sonst identischen Erhebungsparametern.
 
-#todo("Sturtevant-Map-Metriken `dimension` und `transit_node_count` (Radien 500 m und 2000 m) für beide Datensätze nachberechnen und in @tbl:datasets eintragen. Implementierung steht in `Benchmark/metrics.py` bereit. Die Werte sind methodisch in @tbl:map_metrics motiviert und sollen die in @sec:eval-search-space getroffene Aussage zur Skalierung mit der Graphstruktur empirisch unterfüttern.")
+#todo("Sturtevant-`dimension` für den irischen Datensatz nachreichen (Berlin: 3,68). Der ursprünglich vorgesehene `transit_node_count` (Radien 500 m und 2.000 m) wurde nicht in die Tabelle aufgenommen, weil die Implementierung in `Benchmark/metrics.py` für beide Radien den Wert 0 liefert; eine Validierung dieses Ergebnisses war im Rahmen der Arbeit nicht mehr leistbar.")
 
 Die Beschränkung auf zwei Datensätze ist eine bewusste Entscheidung. Zwischenstufen wie Mittelstadt-Auszüge würden voraussichtlich Metriken liefern, die zwischen den beobachteten Extremen liegen, und keine qualitativ neuen Aussagen ermöglichen. Die orthogonale Variation der Cluster-Granularität in sieben Stufen erhöht die experimentelle Abdeckung dagegen erheblich.
 
@@ -54,8 +52,6 @@ Die zentrale Qualitätsmetrik ist die in @tbl:derived_metrics definierte `subopt
   caption: [Vergleich der gefundenen Pfaddistanzen für A\* und HPA\* im Berliner Datensatz bei Grid-Size 10. Jeder Punkt entspricht einem Testproblem; alle 490 Punkte liegen auf der Diagonalen $y = x$.],
 ) <fig:path_quality_scatter>
 
-#todo("Scatter-Plot aus `knowledgebase/plots/v2/serialized/path_quality.json` generieren: `scatter_grid_10.BerlinV2.astar_distance_m` gegen `scatter_grid_10.BerlinV2.hpa_distance_m`. Diagonale $y = x$ als Referenzlinie einzeichnen.")
-
 Dieses Ergebnis weicht von der Originalliteratur ab: Botea et al. @Botea:2004 beschreiben HPA\* als _near-optimal_ und berichten in ihren Experimenten relative Pfadfehler in der Größenordnung von 1 bis 2 %. Der Unterschied zur vorliegenden Implementierung lässt sich auf zwei Designentscheidungen zurückführen. Erstens werden im hier verwendeten Verfahren alle Gate Nodes erhalten: jeder Endpunkt einer cluster-überschreitenden Kante des Basisgraphen wird zum Gate-Knoten des abstrakten Graphen (siehe @gate-architektur). Boteas Originalvariante reduziert dagegen die zahlreichen _Entrance Points_ pro Cluster-Grenze auf einen oder wenige repräsentative _Transition Points_. Diese Reduktion verkleinert den abstrakten Graphen und beschleunigt die abstrakte Suche, schließt aber potenziell den objektiv kürzesten Übergang aus. Sie ist die primäre Ursache der berichteten 1 bis 2 % Suboptimalität.
 
 Zweitens werden die Intra-Cluster-Kantengewichte streng cluster-beschränkt berechnet (siehe @sec:build-phase). Auf gerichteten Graphen ist es theoretisch möglich, dass der global optimale Pfad zwischen zwei Gate Nodes desselben Voronoi-Clusters kurz ein Nachbar-Cluster durchquert und damit von einer cluster-beschränkten A\*-Suche nicht gefunden wird. In den 14 untersuchten Konfigurationen tritt dieser Fall empirisch nicht auf. Eine plausible Erklärung liegt in der hohen Bidirektionalität des OSM-Fahrradnetzes: Die wenigen Einbahnstraßen-Restriktionen reichen nicht aus, um die Voronoi-Konvexität der Cluster systematisch zu verletzen.
@@ -75,8 +71,6 @@ Für jeden Datensatz und jede Grid-Size lässt sich der Speedup als Funktion der
   caption: [Speedup von HPA\* gegenüber A\* als Funktion der Pfadlänge (Bucket-ID) für sieben Grid-Sizes im Berliner Datensatz. Die horizontale Linie bei 1,0 markiert den Break-Even; oberhalb arbeitet HPA\* schneller, unterhalb A\*.],
 ) <fig:speedup_pathlength_grids>
 
-#todo("Plot aus `knowledgebase/plots/v2/serialized/speedup_vs_pathlength_all_grids.json` generieren: eine Kurve pro Grid-Size (5, 10, 15, 20, 25, 30, 35), x = bucket_id, y = mean_speedup. Horizontale Referenzlinie bei y = 1,0.")
-
 In allen sieben Grid-Sizes wächst der Speedup monoton mit der Pfadlänge. Bei kurzen Pfaden liegt er deutlich unter 1, bei langen Pfaden deutlich darüber. Der Crossover-Punkt, also der Bucket, ab dem HPA\* erstmals schneller wird als A\*, verschiebt sich systematisch mit der Grid-Size: Im Berliner Datensatz liegt er bei Grid-Size 10 bei Bucket 27,9 (etwa 13,9 km), bei Grid-Size 20 bereits bei Bucket 15,2 (etwa 7,6 km) und bei Grid-Size 35 bei Bucket 7,7 (etwa 3,9 km). Bei der kleinsten getesteten Grid-Size 5 tritt im Berliner Datensatz im gesamten Bucket-Bereich kein Crossover auf; HPA\* bleibt dort über alle Pfadlängen langsamer als A\*.
 
 Im irischen Datensatz zeigt sich das gleiche Muster bei niedrigeren absoluten Werten. Der Crossover-Punkt wandert von Bucket 39,6 (Grid-Size 5, etwa 19,8 km) über Bucket 20,9 (Grid-Size 10) zu Bucket 7,9 (Grid-Size 35, etwa 4,0 km). Auch hier liefert die kleinste Grid-Size für nahezu den gesamten Pfadlängenbereich keinen Speedup; erst der mit Abstand längste Bucket erreicht den Faktor 1.
@@ -88,11 +82,14 @@ Der Mechanismus dahinter ist algorithmischer Natur. Eine HPA\*-Anfrage trägt un
 Aggregiert man den Speedup über Bucket-Bereiche, ergibt sich eine direkte Abhängigkeit von der Grid-Size. @fig:speedup_gridsize zeigt diese Funktion für zwei Pfadlängen-Klassen je Datensatz.
 
 #figure(
-  image("../figures/plot_speedup_vs_gridsize_berlinv2.png", width: 100%),
-  caption: [Mittlerer Speedup als Funktion der Grid-Size für zwei Pfadlängen-Klassen (kurze Pfade in den Buckets 0–15, lange Pfade ab Bucket 30) im Berliner und im irischen Datensatz. Werte oberhalb der Referenzlinie y = 1 bedeuten, dass HPA\* schneller arbeitet als A\*. Fehlerbalken zeigen die Standardabweichung.],
+  grid(
+    columns: 2,
+    column-gutter: 0.5em,
+    image("../figures/plot_speedup_vs_gridsize_berlinv2.png", width: 100%),
+    image("../figures/plot_speedup_vs_gridsize_irelandv2.png", width: 100%),
+  ),
+  caption: [Mittlerer Speedup als Funktion der Grid-Size für zwei Pfadlängen-Klassen (kurze Pfade in den Buckets 0–15, lange Pfade ab Bucket 30) im Berliner (links) und im irischen (rechts) Datensatz. Werte oberhalb der Referenzlinie y = 1 bedeuten, dass HPA\* schneller arbeitet als A\*. Fehlerbalken zeigen die Standardabweichung.],
 ) <fig:speedup_gridsize>
-
-#todo("Plot aus `knowledgebase/plots/v2/serialized/speedup_vs_gridsize.json` generieren: zwei Panels (Berlin, Ireland), pro Panel zwei Linien für die Bucket-Bereiche `short_paths_bucket_0_15` und `long_paths_bucket_30_plus`, x = grid_size, y = mean speedup, Fehlerbalken aus `std_speedup`. Horizontale Referenzlinie bei y = 1,0.")
 
 Im Berliner Datensatz wächst der Speedup für lange Pfade monoton von 0,37 (Grid-Size 5) auf 4,76 (Grid-Size 35); die stärkste Steigung liegt im unteren Grid-Size-Bereich, zwischen Grid-Size 5 und 15 verzehnfacht sich der Speedup nahezu (von 0,37 auf 3,10), während er zwischen Grid-Size 25 und 35 nur noch um etwa 10 % zulegt. Für kurze Pfade bleibt der Speedup bis Grid-Size 30 unter 1 und erreicht bei Grid-Size 35 mit 1,10 erstmals einen marginalen Vorteil. Im irischen Datensatz wächst der Speedup für lange Pfade nicht streng monoton: er erreicht bei Grid-Size 25 sein Maximum von 2,76 und schwankt anschließend zwischen 2,63 und 2,64. Ab Grid-Size 15 plateaut die Kurve sichtbar, der Übergang von Grid-Size 5 (0,80) auf Grid-Size 15 (2,63) macht den Großteil des Gewinns aus. Für kurze Pfade bleibt HPA\* im irischen Datensatz über alle Grid-Sizes hinweg langsamer als A\*, erreicht aber bei Grid-Size 35 mit 0,97 das Break-Even-Niveau.
 
@@ -109,8 +106,6 @@ Die Laufzeit einer HPA\*-Anfrage gliedert sich in zwei dominante Phasen (siehe @
   caption: [Aufteilung der mittleren HPA\*-Anfragezeit in abstrakte Suche und Verfeinerung, je Grid-Size und Datensatz. Gestapelte Balken zeigen die absoluten Anteile in Millisekunden.],
 ) <fig:hpa_phases>
 
-#todo("Plot aus `knowledgebase/plots/v2/serialized/hpa_runtime_breakdown.json` generieren: zwei Panels (Berlin, Ireland), pro Panel gestapelte Balken pro Grid-Size mit den Komponenten Abstract Search und Refinement.")
-
 Im Berliner Datensatz wird die HPA\*-Laufzeit bei kleiner Grid-Size von der abstrakten Suche dominiert: Bei Grid-Size 5 entfallen etwa 98 % der mittleren Anfragezeit auf die abstrakte Suche und nur 2 % auf die Verfeinerung. Mit wachsender Grid-Size schrumpft die absolute Zeit für die abstrakte Suche um mehr als eine Größenordnung. Maßgeblich dafür ist nicht die Knotenzahl des abstrakten Graphen (die mit der Grid-Size sogar leicht wächst, siehe @fig:abstract_search), sondern die Anzahl der Intra-Cluster-Kanten pro Gate-Knoten: Kleinere Cluster enthalten weniger Gate-Paare, und jedes Gate hat damit weniger ausgehende Intra-Cluster-Kanten, die bei einer Expansion in die Priority Queue eingefügt werden müssen. Der relative Anteil der abstrakten Suche sinkt entsprechend auf etwa 85 % bei Grid-Size 35. Die Verfeinerung verändert sich absolut nur wenig, da bei mehr Clustern zwar mehr Cluster-Übergänge zu verfeinern sind, jeder einzelne Übergang aber kleiner ausfällt.
 
 Im irischen Datensatz ist das Verhältnis ausgeglichener: Bei Grid-Size 5 entfallen rund 86 % auf die abstrakte Suche und 14 % auf die Verfeinerung, bei Grid-Size 35 nur noch 60 % und 40 %. Die beiden Phasen nähern sich einander an, weil der irische Graph deutlich kleiner ist und der abstrakte Graph entsprechend günstiger zu durchsuchen; der relative Aufwand der Verfeinerung gewinnt damit an Bedeutung.
@@ -126,8 +121,6 @@ Neben der Laufzeit ist die Anzahl der vom Pathfinder expandierten Knoten ein zen
   caption: [Verhältnis der mittleren besuchten Knoten A\*/HPA\* je Bucket für sieben Grid-Sizes, je Datensatz. Werte oberhalb der Referenzlinie y = 1 bedeuten, dass HPA\* weniger Knoten expandiert.],
 ) <fig:search_space_reduction>
 
-#todo("Plot aus `knowledgebase/plots/v2/serialized/search_space_reduction.json` generieren: zwei Panels (Berlin, Ireland), pro Panel eine Linie pro Grid-Size (5, 10, 15, 20, 25, 30, 35), x = bucket_id, y = ratio (A\* / HPA\* visited nodes). Horizontale Referenzlinie bei y = 1,0.")
-
 Die Knoten-Reduktion wächst in beiden Datensätzen monoton mit der Pfadlänge und steigt zusätzlich mit der Grid-Size. Im Berliner Datensatz erreicht das A\*-zu-HPA\*-Verhältnis bei den längsten Pfaden mit Grid-Size 35 Werte von etwa 65; im irischen Datensatz liegen die entsprechenden Maxima bei etwa 17. Bei der kleinsten Grid-Size 5 bleibt das Verhältnis in beiden Datensätzen über den gesamten Bucket-Bereich unter 1, das heißt HPA\* expandiert dort mehr Knoten als A\*. Dieses Verhalten spiegelt das Crossover-Muster aus @sec:eval-runtime; Voraussetzung für eine spürbare Reduktion ist eine ausreichend feine Cluster-Granularität.
 
 @fig:visited_nodes ergänzt diese relative Sicht um die absoluten Größenordnungen bei Grid-Size 10.
@@ -136,8 +129,6 @@ Die Knoten-Reduktion wächst in beiden Datensätzen monoton mit der Pfadlänge u
   image("../figures/plot_visited_nodes_comparison.png", width: 100%),
   caption: [Mittlere Anzahl besuchter Knoten je Bucket für A\* und HPA\* bei Grid-Size 10, je Datensatz, log-y. Die Differenz zwischen den Kurven illustriert den Suchraum-Vorteil in absoluten Werten.],
 ) <fig:visited_nodes>
-
-#todo("Plot aus `knowledgebase/plots/v2/serialized/visited_nodes_comparison.json` generieren: zwei Panels (Berlin, Ireland), pro Panel zwei Linien (A\* und HPA\*), x = bucket_id, y = mean_visited_nodes, log-y.")
 
 Bei Grid-Size 10 expandiert A\* in den oberen Buckets des Berliner Graphen im Mittel mehrere zehntausend Knoten, während HPA\* mit einem Bruchteil davon auskommt. Für Ireland liegt das Niveau etwa eine Größenordnung niedriger.
 
@@ -154,8 +145,6 @@ Die Knoten-Reduktion fällt durchgehend stärker aus als die in @sec:eval-runtim
   caption: [Mittlere maximale Open-Set-Größe je Bucket für A\* und HPA\* bei Grid-Size 10, je Datensatz, log-y. Höhere Werte bedeuten höheren Spitzenspeicherbedarf der Suche.],
 ) <fig:peak_memory>
 
-#todo("Plot aus `knowledgebase/plots/v2/serialized/peak_memory.json` generieren: zwei Panels (Berlin, Ireland), pro Panel zwei Linien (A\* und HPA\*), x = bucket_id, y = mean_max_open_set_size, log-y. Hinweis: In der vorliegenden Serialisierung enthält die HPA\*-Reihe nur die unteren Buckets; die Aussage gilt entsprechend nur für diesen Bereich oder erfordert ein erneutes Sampling.")
-
 Bei Grid-Size 10 wächst die mittlere maximale Open-Set-Größe für A\* im Berliner Datensatz monoton von etwa 24 Einträgen im kürzesten Bucket auf nahezu 1.000 Einträge im längsten. Im irischen Datensatz steigt der A\*-Wert über denselben Bucket-Bereich von 11 auf etwa 110 Einträge, also auf einem rund eine Größenordnung niedrigeren Niveau. Die HPA\*-Werte liegen in beiden Datensätzen in den unteren Buckets nahe dem A\*-Niveau (Berlin Bucket 5: 54 gegenüber 71; Ireland Bucket 5: 11 gegenüber 17), wachsen aber strukturell nicht mit der Pfadlänge mit, weil die abstrakte Suche auf einem Graphen fester Größe operiert.
 
 Diese strukturelle Eigenschaft ist für mobile Endgeräte relevanter als der reine Laufzeit-Speedup. Selbst wenn HPA\* bei kurzen Anfragen im urbanen Datensatz nicht schneller ist als A\*, beschränkt es den Spitzenspeicherbedarf auf eine durch die Größe des abstrakten Graphen bestimmte Obergrenze, statt mit der Pfadlänge zu skalieren. Eine belastbare Quantifizierung für lange Pfade erfordert allerdings ein erneutes Sampling, da die vorliegende Serialisierung der HPA\*-Open-Set-Größe nur die unteren Buckets enthält.
@@ -169,8 +158,6 @@ Im Gegensatz zu A\* verlangt HPA\* eine einmalige Build-Phase, in der für jeden
   caption: [Mittlere Vorberechnungszeit als Funktion der Grid-Size für beide Datensätze, log-y. Die sekundäre x-Achse zeigt die resultierende Anzahl Cluster ($"Grid-Size"^2$).],
 ) <fig:precomputation>
 
-#todo("Plot aus `knowledgebase/plots/v2/serialized/precomputation_vs_gridsize.json` generieren: zwei Linien (Berlin, Ireland), x = grid_size, y = mean_precomputation_ms, log-y. Sekundäre Achse mit n_clusters_per_grid.")
-
 Die Vorberechnung sinkt in beiden Datensätzen monoton mit wachsender Grid-Size. In Berlin fällt sie von 850 Sekunden bei Grid-Size 5 auf nur noch 25 Sekunden bei Grid-Size 35, also um den Faktor 34 bei einer 49-fachen Erhöhung der Cluster-Anzahl. Für Ireland bewegt sich die Vorberechnungszeit auf einem Niveau dreier Größenordnungen darunter und sinkt von 530 Millisekunden auf 84 Millisekunden, eine Reduktion um den Faktor 6,3.
 
 Diese Skalierung ist auf den ersten Blick kontraintuitiv, weil mehr Cluster nach mehr Build-Arbeit aussehen. Die Auflösung liegt in der Struktur der Build-Phase. Pro Cluster wird für jede Kombination aus Entry- und Exit-Gate ein voller A\*-Lauf innerhalb des Clusters durchgeführt; bei $k$ Entry- und Exit-Gates also $k^2$ A\*-Berechnungen. Mit wachsender Grid-Size schrumpft jeder einzelne Cluster, und zwar in zwei Dimensionen gleichzeitig: er enthält weniger Knoten und entsprechend weniger Gates an seiner Grenze. @fig:cluster_stats zeigt das konkret.
@@ -180,8 +167,6 @@ Diese Skalierung ist auf den ersten Blick kontraintuitiv, weil mehr Cluster nach
   caption: [Mittlere Anzahl Knoten pro Cluster als Funktion der Grid-Size für beide Datensätze. Zusätzliche Linien für Median, Minimum und Maximum optional.],
 ) <fig:cluster_stats>
 
-#todo("Plot aus `knowledgebase/plots/v2/serialized/cluster_stats.json` generieren: zwei Panels (Berlin, Ireland), pro Panel mittlere Knoten/Cluster über grid_size, ggf. mit Min/Max-Bändern oder Median-Linie.")
-
 Im Berliner Datensatz sinkt die mittlere Cluster-Knotenzahl von etwa 4.400 bei Grid-Size 5 auf etwa 90 bei Grid-Size 35. Im irischen Datensatz von 193 auf knapp 4. Pro Cluster fallen also bei großer Grid-Size sowohl deutlich weniger Gate-Paare als auch deutlich kürzere A\*-Pfade an. Beide Effekte zusammen führen dazu, dass die per-Cluster-Arbeit schneller schrumpft als die Cluster-Anzahl wächst. Netto sinkt der Gesamtaufwand.
 
 Eine zweite Konsequenz der größeren Grid-Size ist allerdings, dass der abstrakte Graph mehr Knoten enthält, weil jeder Cluster-Übergang einen eigenen Gate-Knoten erzeugt. @fig:abstract_search zeigt, dass die abstrakte Suche pro Anfrage entsprechend mehr Knoten besucht.
@@ -190,8 +175,6 @@ Eine zweite Konsequenz der größeren Grid-Size ist allerdings, dass der abstrak
   image("../figures/plot_abstract_graph_vs_gridsize.png", width: 100%),
   caption: [Mittlere Anzahl in der abstrakten Suche besuchter Knoten je Anfrage, in Abhängigkeit von der Grid-Size, für beide Datensätze. Wächst monoton mit der Grid-Size und dient als Indikator für die Größe des abstrakten Graphen.],
 ) <fig:abstract_search>
-
-#todo("Plot aus `knowledgebase/plots/v2/serialized/abstract_graph_vs_gridsize.json` generieren: zwei Linien (Berlin, Ireland), x = grid_size, y = mean_abstract_nodes_visited.")
 
 In Berlin wächst die mittlere Anzahl in der abstrakten Suche besuchter Knoten von 288 (Grid-Size 5) auf 1.650 (Grid-Size 35), in Ireland von 39 auf 238. Eine größere Grid-Size verschiebt damit einen Teil der Arbeit von der Build-Phase in die Query-Phase. Dieser Trade-Off ist allerdings nicht ausgeglichen, denn die Build-Phase profitiert deutlich stärker. Der in @sec:eval-runtime beobachtete Query-Speedup wächst mit der Grid-Size monoton und wird durch den wachsenden Aufwand der abstrakten Suche nicht kompensiert.
 

@@ -54,6 +54,22 @@ Konzeptionell folgt hierarchisches Routing dem Prinzip des _Level of Detail_ (LO
 
 == Network Voronoi <voronoi-clustering>
 
+Klassische Voronoi-Diagramme partitionieren eine Ebene anhand einer endlichen Menge von Seed-Punkten in disjunkte Regionen @Aurenhammer:1991. Jeder Punkt der Ebene wird derjenigen Region zugewiesen, deren Seed ihm im Sinne der euklidischen Distanz am nächsten liegt. Diese Konstruktion ist in der Geometrie etabliert und liegt zahlreichen räumlichen Datenstrukturen zugrunde, etwa der nächsten-Nachbar-Suche oder der Bestimmung von Einzugsgebieten.
+
+In Straßennetzwerken ist die euklidische Distanz allerdings ein ungeeignetes Distanzmaß. Geographische Barrieren wie Flüsse, Eisenbahntrassen oder nicht befahrbare Straßenabschnitte führen dazu, dass zwei räumlich benachbarte Punkte über das Straßennetz erheblich weiter voneinander entfernt sein können, als die Luftliniendistanz vermuten lässt. Eine euklidisch berechnete Voronoi-Partitionierung würde Knoten gemeinsam einer Region zuordnen, die im Netzwerk schlecht oder gar nicht miteinander verbunden sind. Für die Anwendung in der hierarchischen Pfadsuche ist dies nicht akzeptabel, da die so entstehenden Cluster nicht garantiert zusammenhängend wären @Erwig:2000.
+
+Das Network Voronoi Diagram (NVD) löst dieses Problem, indem es die Voronoi-Konstruktion auf den zugrunde liegenden Graphen überträgt und die euklidische Distanz durch die kürzeste-Wege-Distanz im Netzwerk ersetzt @Kolahdouzan:2004. Sei $G = (V, E)$ ein gewichteter Graph mit nicht-negativen Kantengewichten und $S = {s_1, ..., s_n} subset V$ eine Menge ausgezeichneter Seed-Knoten. Das NVD partitioniert $V$ in disjunkte Cluster $C_1, ..., C_n$, wobei ein Knoten $v in V$ dem Cluster $C_i$ zugewiesen wird, wenn
+
+$ d(s_i, v) <= d(s_j, v) quad forall j != i $
+
+gilt. Hierbei bezeichnet $d(u, v)$ die kürzeste-Wege-Distanz zwischen zwei Knoten im Graphen. Bei mehrdeutigen Zuweisungen, also Knoten mit identischer Distanz zu zwei oder mehr Seeds, entscheidet eine implementierungsabhängige Tie-Breaking-Regel.
+
+Die so entstehenden Cluster haben drei für die hierarchische Pfadsuche relevante Eigenschaften. Erstens sind sie zusammenhängend @Erwig:2000, weil der kürzeste-Wege-Operator durch sukzessive Kantenfolgen propagiert: Jeder Knoten eines Clusters ist über einen vollständig im Cluster liegenden Pfad mit seinem Seed verbunden. Zweitens sind die Cluster-Grenzen wohldefiniert; sie verlaufen entlang jener Knoten, an denen sich die Wellenfronten zweier oder mehrerer Seeds treffen. Diese Knoten sind die natürlichen Übergangspunkte zwischen Clustern und werden in der vorliegenden Arbeit als Gate Nodes weiterverwendet (siehe @gate-architektur). Drittens berücksichtigt die Partitionierung implizit die strukturellen Eigenschaften des Straßennetzes: Topologische Barrieren werden korrekt abgebildet, da sie die Netzwerkdistanz und damit die Cluster-Zuweisung direkt beeinflussen.
+
+Die Berechnung eines NVD lässt sich effizient über einen mehrseitigen Dijkstra-Lauf realisieren @Kolahdouzan:2004. Statt jeden Seed einzeln zu propagieren und Cluster-Zuweisungen anschließend über paarweise Vergleiche zu bestimmen, startet eine modifizierte Dijkstra-Variante mit allen Seeds gleichzeitig in der Priority Queue. Jeder Eintrag in der Queue trägt zusätzlich die Information, von welchem Seed aus er propagiert wurde. Beim ersten Erreichen eines Knotens wird die Cluster-Zuweisung über diesen Seed gespeichert; spätere Wiederbesuche von einem anderen Seed bleiben unberücksichtigt, da die ursprüngliche Zuweisung per Konstruktion die kürzere Distanz repräsentiert. Die asymptotische Laufzeit entspricht der eines einzelnen Dijkstra-Laufs auf dem Gesamtgraphen, also $O(|E| + |V| log |V|)$ bei Verwendung einer Fibonacci-Heap-Priority-Queue @Cormen:2009.
+
+Die konkrete Umsetzung dieses Verfahrens im Kontext der vorliegenden Arbeit, einschließlich der Wahl der Seed-Knoten und der Behandlung der Kantenrichtung, wird in @sec:build-phase behandelt.
+
 == OpenStreetMap als Datenbasis
 
 OpenStreetMap (OSM) ist ein offenes, gemeinschaftlich gepflegtes Kartenprojekt, das geografische Daten unter der Open Database License (ODbL) frei zur Verfügung stellt [Zitat: OpenStreetMap Foundation — TODO: OSM-Referenz suchen, z.B. Haklay & Weber 2008]. Im Gegensatz zu kommerziellen Kartendiensten sind die Daten kostenlos zugänglich, reproduzierbar und für andere Forschende einsehbar, was OSM besonders für wissenschaftliche Arbeiten geeignet macht.

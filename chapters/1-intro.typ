@@ -19,7 +19,7 @@ Der Vergleich erfolgt anhand folgender Metriken:
 Um statistisch aussagekräftige Ergebnisse zu erzielen, werden beide Algorithmen über eine hohe Anzahl zufälliger Start-/Zielpaar-Kombinationen #todo([genaue Anzahl festlegen, z.B. 1000 Testläufe]) auf derselben Karte ausgeführt. Die gewählte Evaluationsmethodik wird in Kapitel 6 im Detail beschrieben.
 Als Qualitätskriterium wird die prozentuale Abweichung der von HPA\* berechneten Pfadlänge vom durch A\* ermittelten Referenzpfad herangezogen. Angestrebt wird dabei eine Abweichung von unter 1%, wie sie von Botea et al. (2004) @Botea:2004 für HPA\* nach Pfadglättung beschrieben wird. Ob diese Schwelle in der vorliegenden Implementierung erreicht wird, ist dabei selbst Teil der empirischen Untersuchung.
 
-== Abgrenzung
+== Abgrenzung <sec:abgrenzung>
 Das im Rahmen dieser Arbeit entwickelte System dient ausschließlich der empirischen Analyse und dem Vergleich der beiden Algorithmen. Es ist kein produktionsreifes Routingsystem. Daraus ergeben sich mehrere bewusste Einschränkungen.
 
 Die Partitionierung des Graphen in Cluster erfolgt über ein einfaches, reproduzierbares Verfahren, das die Kontrolle über Clustergröße und -anzahl begünstigt. Produktionssysteme verwenden deutlich aufwändigere Ansätze, etwa zur Reduktion der Grenzpunkte zwischen Clustern @OsmAnd:2024. Die vorliegende Arbeit verzichtet bewusst auf solche Optimierungen, da nicht ein optimal partitioniertes System entwickelt werden soll, sondern das Prinzip der hierarchischen Suche untersucht wird. Die konkrete Wahl der Clustering-Methode und die Konstruktion des abstrakten Graphen werden in Kapitel 4 beschrieben.
