@@ -156,7 +156,7 @@ long }
   language: "en", bibfilename: "",
   // Base infors, such as title and (optional) subtitle, supervisor, author, (optional) logo, abstracts etc.
   title: "Specify the title of your Thesis",
-  subtitle: none, supervisor: "Specify your supervisor",
+  subtitle: none, supervisor: "Specify your supervisor", reviewer: none,
   author: "Specify your author",
   submission-date: "Specify submission date",
   logo: none,
@@ -262,6 +262,7 @@ long }
   //
   // Defaults:
   let FHJ_THESIS_SUPERVISOR_LABEL = "Supervisor or Betreuer/in?"
+  let FHJ_THESIS_REVIEWER_LABEL = "Reviewer or Gutachter/in?"
   let FHJ_THESIS_AUTHOR_LABEL = "Submitted by or Eingereicht von?"
 
   // Following defaults should be overwritten
@@ -311,9 +312,9 @@ long }
   } else if (study == "mi") {
     FHJ_THESES_TITLE = "Bachelorarbeit"
     FHJ_THESIS_SUBMITTED_FOR = "zur Erlangung des akademischen Grades"
-    FHJ_THESES_TYP = "Bachelor of Science (BSc)"
-    FHJ_THESIS_SUBMITTED_TO = "eingereicht am" + linebreak()
-    FHJ_THESES_PROG_TYPE = "Fachhochschul-Studiengang"
+    FHJ_THESES_TYP = "Bachelor of Science (B.Sc.)"
+    FHJ_THESIS_SUBMITTED_TO = "im" + linebreak()
+    FHJ_THESES_PROG_TYPE = "Studiengang"
     FHJ_THESES_PROG_NAME = "Medieninformatik"
   } else {
     todo([
@@ -332,10 +333,12 @@ long }
 
   if (language == "en") {
     FHJ_THESIS_SUPERVISOR_LABEL = "Supervisor"
+    FHJ_THESIS_REVIEWER_LABEL = "Reviewer"
     FHJ_THESIS_AUTHOR_LABEL = "Submitted by"
   }
   if (language == "de") {
     FHJ_THESIS_SUPERVISOR_LABEL = "Betreuer/in"
+    FHJ_THESIS_REVIEWER_LABEL = "Gutachter/in"
     FHJ_THESIS_AUTHOR_LABEL = "Eingereicht von"
   }
 
@@ -441,7 +444,7 @@ long }
   // top logo image
   if logo != none {
     set align(center + top)
-    v(1cm) // top border
+    v(0.5cm) // top border
     logo // Logo FH JOANNEUM (vector graphics)
   }
 
@@ -469,6 +472,8 @@ long }
 
         #text(weight: "bold", [#FHJ_THESIS_SUPERVISOR_LABEL: #supervisor])
 
+        #if reviewer != none [#text(weight: "bold", [#FHJ_THESIS_REVIEWER_LABEL: #reviewer])]
+
         #text(weight: "bold", [#FHJ_THESIS_AUTHOR_LABEL: #author])
         #v(3em)
 
@@ -494,10 +499,12 @@ long }
 
         #v(0.5em)
 
-        BHT (Berliner Hochschule fuer Technik)
+        Berliner Hochschule für Technik (BHT)
         #v(4em)
 
         #text(weight: "bold", [#FHJ_THESIS_SUPERVISOR_LABEL: #supervisor])
+
+        #if reviewer != none [#text(weight: "bold", [#FHJ_THESIS_REVIEWER_LABEL: #reviewer])]
 
         #text(weight: "bold", [#FHJ_THESIS_AUTHOR_LABEL: #author])
         #v(3em)

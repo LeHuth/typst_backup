@@ -23,7 +23,7 @@
   //    false...the final version:
   //         will remove the red TODO text from the title page
   //         and removes the current timestamp "Preview printed 20xx-xx-xx" from the title page
-  draft: true,
+  draft: false,
   // Logo should be ok for a thesis at IIT, the
   // Institute of Software Design and Security (see https://www.fh-joanneum.at/iit)
   logo: image("./figures/bht_logo.svg", width: 60%),
@@ -39,11 +39,11 @@
   study: "mi", // ims, irm, swd, msd
   // For study programme "ims" the language is required to be in English
   language: "de", // en, de
-  title: "<title>",
+  title: "Hierarchische Pfadsuche mit HPA* im Vergleich zu A* - Analyse von Laufzeit und Pfadqualität",
   // Optional subtitle. Set to none if you do not need a subtitle.
-  subtitle: "<subtitle>", supervisor: "Dr. Prof. Hartmut Schirmacher", author: "Leonard Huth",
+  subtitle: none, supervisor: "Dr. Prof. Hartmut Schirmacher", reviewer: "Prof. Dr. Heike Ripphausen-Lipa", author: "Leonard Huth",
   // E.g. "Dezember 2025" or "Dec / 2025"
-  submission-date: "<submission_date>",
+  submission-date: "18.05.2026",
   // For study programme "IMS"
   // the German abstract is optional, i.e. set to none.
   abstract-ge: [
@@ -88,10 +88,10 @@
 #include "./chapters/6-evaluation.typ"
 //#pagebreak()
 
-//#include "./chapters/7-conclusion.typ"
-//#pagebreak()
+#include "./chapters/7-conclusion.typ"
+#pagebreak()
 
-//#include "./chapters/glossary.typ"
+#include "./chapters/glossary.typ"
 //#pagebreak()
 
 // Appendix (optional)

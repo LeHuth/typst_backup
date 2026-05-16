@@ -28,7 +28,7 @@ Das Datenmodell des Routing-Kerns baut auf dem Basisgraphen auf, dem gerichteten
 
 === Voronoi-Partitionierung des Basisgraphen
 
-Die Partitionierung des Basisgraphen in Cluster orientiert sich am Konzept des Network Voronoi Diagrams (NVD). #todo("Kolahdouzan und Shahabi (2004) Quelle einpflegen") definieren das NVD als eine Spezialisierung des Voronoi-Diagramms für Graphen, bei der die Distanz zwischen zwei Knoten nicht die euklidische, sondern die kürzeste Netzwerkdistanz ist. Bezogen auf eine Menge ausgezeichneter Seed-Knoten partitioniert das NVD den Basisgraphen, indem es jeden Knoten demjenigen Seed zuweist, zu dem er die geringste Netzwerkdistanz aufweist. Die so entstehenden Cluster sind zusammenhängende Teilbereiche des Basisgraphen; ihre Grenzen verlaufen entlang jener Knoten, an denen zwei Seeds gleich nah sind.
+Die Partitionierung des Basisgraphen in Cluster orientiert sich am Konzept des Network Voronoi Diagrams (NVD). Kolahdouzan und Shahabi @Kolahdouzan:2004 definieren das NVD als eine Spezialisierung des Voronoi-Diagramms für Graphen, bei der die Distanz zwischen zwei Knoten nicht die euklidische, sondern die kürzeste Netzwerkdistanz ist. Bezogen auf eine Menge ausgezeichneter Seed-Knoten partitioniert das NVD den Basisgraphen, indem es jeden Knoten demjenigen Seed zuweist, zu dem er die geringste Netzwerkdistanz aufweist. Die so entstehenden Cluster sind zusammenhängende Teilbereiche des Basisgraphen; ihre Grenzen verlaufen entlang jener Knoten, an denen zwei Seeds gleich nah sind.
 
 Die Wahl der Netzwerkdistanz statt der euklidischen ist für Straßennetze konstitutiv: Geographische Barrieren wie Flüsse, Bahnlinien oder nicht überquerbare Straßen werden durch die tatsächliche Graphstruktur korrekt abgebildet. Eine rein euklidische Zuweisung könnte Knoten zusammenfassen, die im Netzwerk weit voneinander entfernt oder gar nicht verbunden sind.
 
@@ -66,8 +66,6 @@ Im Anschluss an die Partitionierung werden die Gate Nodes identifiziert. Ein Kno
 Aus den identifizierten Gate Nodes wird abschließend der abstrakte Graph konstruiert. Die Inter-Cluster-Kanten ergeben sich unmittelbar aus den cluster-überschreitenden Kanten des Basisgraphen und tragen deren Gewichte. Die Intra-Cluster-Kanten erfordern eine separate Vorberechnung: Für jedes Cluster wird A\* zwischen allen Paaren von Gate Nodes ausgeführt, wobei die Suche auf den Teilgraphen des jeweiligen Clusters beschränkt ist. Das resultierende Kantengewicht entspricht den optimalen Traversierungskosten innerhalb des Clusters; die Beschränkung auf den jeweiligen Teilgraphen wurde im Datenmodell bereits motiviert. Die konkrete Umsetzung dieser Beschränkung im Code wird in @implementation behandelt.
 
 Der vollständige Build-Zustand, bestehend aus Cluster-Zuordnung, Gate Nodes und abstraktem Graphen, wird derzeit nicht persistent gespeichert. Bei jedem Serverstart wird die Build-Phase vollständig erneut ausgeführt. Eine persistente Speicherung in der ohnehin im Projekt vorhandenen PostgreSQL-Instanz ist geplant; ihre Umsetzung wäre Voraussetzung dafür, die Vorberechnungszeit über mehrere Serverlebenszyklen hinweg zu amortisieren.
-
-#todo("Persistenz des Build-Zustands ist geplant, aktuell aber nicht implementiert. Mit der Implementierung wird dieser Absatz entsprechend angepasst.")
 
 === Query-Phase <sec:query-phase>
 

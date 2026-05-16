@@ -22,5 +22,6 @@
 #show figure.caption: c => block(width:100%,align(left, c.body))
 #print-glossary(
   gls-entries,
+  show-all: true,
   deduplicate-back-references: true,
 )

@@ -48,7 +48,7 @@ OSMnx liefert das Netzwerk als gerichteten Multigraphen vom Typ networkx.MultiDi
 
 === Caching
 
-Um wiederholte Anfragen an die Overpass-API zu vermeiden, persistiert die Anwendung den geladenen Graphen beim ersten Abruf als GraphML-Datei unter data/graph.graphml. Bei späteren Serverstarts wird der Graph aus diesem Cache geladen, sofern die Datei vorhanden und nicht leer ist. Listing 5.1 zeigt die hierfür zuständige Klasse Osm. 
+Um wiederholte Anfragen an die #gls("overpassapi") zu vermeiden, persistiert die Anwendung den geladenen Graphen beim ersten Abruf als GraphML-Datei unter data/graph.graphml. Bei späteren Serverstarts wird der Graph aus diesem Cache geladen, sofern die Datei vorhanden und nicht leer ist. Listing 5.1 zeigt die hierfür zuständige Klasse Osm.
 
 #figure(
   align(
@@ -138,7 +138,7 @@ Wird der Zielknoten aus der Open Set entnommen, rekonstruiert die Methode recons
 ) <lst:reconstruct_path>
 
 === Erfassung von Laufzeitmetriken
-Für die spätere Auswertung in Kapitel 7 erfasst die Implementierung sechs Metriken pro Pfadanfrage und gibt sie in jedem Generator-Yield im Feld stats mit aus. Tabelle 5.1 fasst die erhobenen Größen und ihre Bedeutung zusammen.
+Für die spätere Auswertung in @evaluation erfasst die Implementierung sechs Metriken pro Pfadanfrage und gibt sie in jedem Generator-Yield im Feld stats mit aus. Tabelle 5.1 fasst die erhobenen Größen und ihre Bedeutung zusammen.
 #figure(
 caption: [Erfasste Laufzeitmetriken pro A\*-Anfrage.],
 table(
@@ -154,13 +154,13 @@ table.header[Metrik][Bedeutung],
 ),
 )
 Diese Granularität erlaubt es, in der Auswertung nicht nur die Gesamtlaufzeit zu vergleichen, sondern auch zwischen den Komponenten zu differenzieren, die zur Laufzeit beitragen, etwa zwischen Suchraumgröße (visited_nodes_count) und Heap-Verwaltungsaufwand (heap_pushes und heap_pops).
-#todo("Kapitel 7: Stats systematisch über alle Algorithmen und Ausschnitte aggregieren und visualisieren.")
+
 
 == Hierarchisches Pathfinding mit HPA\* <sec:hpastar>
 Die in dieser Arbeit implementierte Variante des Hierarchical Pathfinding A\* (HPA\*) folgt dem Grundgerüst von Botea et al. @Botea:2004 und überträgt es auf die spezifischen Eigenschaften eines OSM-Straßennetzes. Sie weicht in zwei Punkten vom ursprünglichen Vorschlag ab. Erstens werden die abstrakten Knoten nicht als Paare aus Entry- und Exit-Punkten pro Cluster-Border modelliert, sondern jeder Border-Knoten ist ein einzelner abstrakter Knoten, der zugleich Exit für den einen und Entry für das benachbarte Cluster darstellt. Zweitens erfolgt die Cluster-Bildung nicht über das in @Botea:2004 verwendete reguläre Gitter, das ein dichtes Grid voraussetzt, sondern über eine Network-Voronoi-Partitionierung des Graphen, da OSM-Straßennetze keine gitterartige Struktur besitzen (siehe Abschnitt 2.4). Beide Adaptionen werden in den folgenden Unterabschnitten begründet.
 === Übersicht der Laufzeitphasen
 Die Implementierung verteilt die Arbeit auf eine einmalige Vorberechnung beim Start und eine Query-Phase pro Pfadanfrage. Die Vorberechnung umfasst zwei Schritte: die Network-Voronoi-Partitionierung des Graphen (Abschnitt 5.4.2) und die Konstruktion des abstrakten Graphen (Abschnitt 5.4.3). Die Query-Phase besteht aus der abstrakten A\*-Suche über dem Gate-Graphen (Abschnitt 5.4.4) und der anschließenden Verfeinerung der gefundenen Gate-Sequenz zu einem konkreten OSM-Pfad (Abschnitt 5.4.5).
-Die Trennung in Vorberechnung und Query ist die zentrale Idee hierarchischer Pathfinding-Verfahren: Aufwand, der einmal anfällt, wird aus der Query-Schleife herausgezogen, sodass jede einzelne Pfadanfrage von einer reduzierten Suchraumgröße profitiert. Für eine Anwendung mit statischem Straßennetz, wie sie hier untersucht wird, ist diese Aufteilung uneingeschränkt vorteilhaft. Eine Diskussion der Folgen für dynamische Szenarien findet sich in Kapitel 8.
+Die Trennung in Vorberechnung und Query ist die zentrale Idee hierarchischer Pathfinding-Verfahren: Aufwand, der einmal anfällt, wird aus der Query-Schleife herausgezogen, sodass jede einzelne Pfadanfrage von einer reduzierten Suchraumgröße profitiert. Für eine Anwendung mit statischem Straßennetz, wie sie hier untersucht wird, ist diese Aufteilung uneingeschränkt vorteilhaft. Eine Diskussion der Folgen für dynamische Szenarien findet sich in @sec:outlook.
 === Network-Voronoi-Clustering
 Die Cluster-Bildung erfolgt in der Klasse RegionGrow und basiert auf einem Multi-Source-Dijkstra-Lauf, der von einem regelmäßigen Gitter aus Seed-Punkten ausgeht. Das Verfahren gliedert sich in drei Schritte.
 Zunächst wird der OSM-Graph in das lokale UTM-Koordinatensystem projiziert (siehe @koordinatensysteme). Über die Bounding-Box des projizierten Graphen wird ein gleichmäßiges $n times n$-Gitter aus Seed-Punkten gelegt, wobei $n$ über den Parameter grid_size konfigurierbar ist. Anschließend wird jeder Gitter-Punkt auf den nächstgelegenen OSM-Knoten abgebildet. Die Projektion in UTM ist hierbei ausschließlich für die Konstruktion des Gitters notwendig und beeinflusst weder die Distanzberechnung noch die nachfolgende Pfadsuche.
@@ -212,7 +212,7 @@ Die Konstruktion läuft in zwei Durchgängen. Im ersten Durchgang werden alle Ka
 
 Im zweiten Durchgang werden die Intra-Cluster-Kanten ergänzt. Für jedes Cluster wird die exakte Distanz zwischen jedem Paar aus Entry- und Exit-Gate vorab über einen vollständigen A\*-Lauf bestimmt und als Kantengewicht im abstrakten Graphen hinterlegt. Diese Vorberechnung ist der teuerste Schritt der Initialisierung; ihr Aufwand wächst quadratisch in der Anzahl der Gates pro Cluster. Sie erfolgt jedoch nur einmal pro Serverstart und entlastet jede nachfolgende Query um eine entsprechende Anzahl A\*-Läufe.
 
-Eine bewusste Vereinfachung dieser Konstruktion betrifft die Auswahl der Gates. In erweiterten Varianten von HPA\* werden Gate-Mengen durch Pruning-Verfahren reduziert, etwa indem nur die geographisch repräsentativsten Border-Knoten als Gates erhalten bleiben. Die vorliegende Implementierung verzichtet auf jegliches Pruning. Jeder Border-Knoten ist ein Gate. Diese Entscheidung folgt dem Grundsatz, dass mehr Gates die Korrektheit der abstrakten Suche begünstigen, indem sie ihr mehr Routing-Optionen geben. Pruning ist eine Optimierungsfrage und wirkt sich nicht auf die Korrektheit aus; ein systematischer Vergleich verschiedener Pruning-Strategien wird in Kapitel 8 als zukünftige Arbeit vorgeschlagen.
+Eine bewusste Vereinfachung dieser Konstruktion betrifft die Auswahl der Gates. In erweiterten Varianten von HPA\* werden Gate-Mengen durch Pruning-Verfahren reduziert, etwa indem nur die geographisch repräsentativsten Border-Knoten als Gates erhalten bleiben. Die vorliegende Implementierung verzichtet auf jegliches Pruning. Jeder Border-Knoten ist ein Gate. Diese Entscheidung folgt dem Grundsatz, dass mehr Gates die Korrektheit der abstrakten Suche begünstigen, indem sie ihr mehr Routing-Optionen geben. Pruning ist eine Optimierungsfrage und wirkt sich nicht auf die Korrektheit aus; ein systematischer Vergleich verschiedener Pruning-Strategien wird in @sec:outlook als zukünftige Arbeit vorgeschlagen.
 
 === Abstrakte A\*-Suche
 
@@ -233,7 +233,7 @@ Die Anbindungs-A\*-Läufe sind über einen optionalen Parameter node_allowlist d
 ) <lst:allowlist_filter>
 \
 
-Diese Komposition ist ein Vorteil der generischen A\*-Implementierung. Die HPA\*-Schicht benötigt keine eigene Variante einer Intra-Cluster-Suche, sondern parametriert dieselbe Methode durch eine Knotenmenge. Eine frühere Variante der Implementierung verwendete an dieser Stelle eine Approximation, die die Distanz vom Startknoten zum Gate als Summe der Voronoi-Distanzen $"dist"["start"] + "dist"["gate"]$ ausdrückte. Diese Summe entspricht der Distanz über den Cluster-Seed und überschätzt im Allgemeinen die echte direkte Distanz. Da A\* für die Optimalitätsgarantie eine zulässige, also nicht überschätzende Heuristik benötigt, hätte diese Approximation den von HPA\* gefundenen Pfad gegenüber dem von Standard-A\* gefundenen suboptimal werden lassen. Die jetzige Implementierung mit echten, cluster-beschränkten A\*-Läufen erhält die Optimalität strikt, allerdings zum Preis einer messbaren Anbindungs-Latenz pro Query, die in Kapitel 7 untersucht wird.
+Diese Komposition ist ein Vorteil der generischen A\*-Implementierung. Die HPA\*-Schicht benötigt keine eigene Variante einer Intra-Cluster-Suche, sondern parametriert dieselbe Methode durch eine Knotenmenge. Eine frühere Variante der Implementierung verwendete an dieser Stelle eine Approximation, die die Distanz vom Startknoten zum Gate als Summe der Voronoi-Distanzen $"dist"["start"] + "dist"["gate"]$ ausdrückte. Diese Summe entspricht der Distanz über den Cluster-Seed und überschätzt im Allgemeinen die echte direkte Distanz. Da A\* für die Optimalitätsgarantie eine zulässige, also nicht überschätzende Heuristik benötigt, hätte diese Approximation den von HPA\* gefundenen Pfad gegenüber dem von Standard-A\* gefundenen suboptimal werden lassen. Die jetzige Implementierung mit echten, cluster-beschränkten A\*-Läufen erhält die Optimalität strikt, allerdings zum Preis einer messbaren Anbindungs-Latenz pro Query, die in @evaluation untersucht wird.
 
 Der Aufbau des Heaps für die abstrakte Suche erfolgt entsprechend, indem für jedes Exit-Gate des Startclusters die echte Distanz vom Startknoten bestimmt und mit der Haversine-Heuristik zum Zielknoten zu einem f-Wert kombiniert wird. Symmetrisch wird für jedes Entry-Gate des Zielclusters die echte Distanz zum Zielknoten vorab berechnet und in einem Dictionary end_extra hinterlegt. Erreicht die Suche während der Expansion ein Entry-Gate des Zielclusters, wird durch Addition von end_extra ein Kandidat für die Gesamtkosten gebildet und mit dem bisher besten Kandidaten verglichen. Die Suche terminiert, sobald der nächste aus dem Heap entnommene f-Wert diesen besten Gesamtwert nicht mehr unterbieten kann.
 
@@ -276,9 +276,7 @@ HPA\* erfasst zusätzlich zu den in @sec:astar beschriebenen A\*-Metriken vier G
   ),
 ) <tbl:hpastar_metriken>
 
-Diese Aufschlüsselung erlaubt in Kapitel 7 eine Differenzierung des Gesamtaufwands nach Phasen. Insbesondere lässt sich der Anteil der einmaligen Vorberechnung von der wiederholten Query-Last trennen und untersuchen, ab welcher Pfadlänge der Vorberechnungsaufwand sich amortisiert.
-
-#todo("Kapitel 7: Vorberechnungs-Amortisation als Funktion der Pfadlänge auswerten.")
+Diese Aufschlüsselung erlaubt in @evaluation eine Differenzierung des Gesamtaufwands nach Phasen. Insbesondere lässt sich der Anteil der einmaligen Vorberechnung von der wiederholten Query-Last trennen und untersuchen, ab welcher Pfadlänge der Vorberechnungsaufwand sich amortisiert.
 
 == Visualisierung und WebSocket-Streaming <sec:visualisierung>
 
@@ -362,7 +360,7 @@ Neben den in @sec:visualisierung beschriebenen WebSocket-Endpunkten stellt das B
 
 Die Trennung zwischen REST und WebSocket folgt einem einfachen Kriterium. Anfragen, deren Antwort von einem einzelnen Wert oder einer in sich abgeschlossenen Datenstruktur gebildet wird, nutzen REST. Anfragen, deren Mehrwert in der schrittweisen Beobachtung des Antwortaufbaus liegt, nutzen WebSocket. Die in der Tabelle aufgeführten Pfadendpunkte (/path, /hpa_path) sind dabei als Bequemlichkeitsschicht über demselben Generator-Code zu verstehen, der auch die WebSocket-Endpunkte bedient: Sie konsumieren den Generator vollständig und geben ausschließlich den finalen Zustand zurück. Dies ist insbesondere für den in @sec:hpastar erwähnten Benchmark-Adapter relevant, der zur Reduktion der Messstörungen ohnehin nicht an Zwischenzuständen interessiert ist.
 
-Die Visualisierungs-Endpunkte werden vom Frontend einmal beim Mount der Karten-Komponente abgerufen und ändern sich während des Anwendungslaufs nicht. Sie sind daher als statische, cacheable GeoJSON-Antworten konzipiert. Die Benchmark-Endpunkte sind nur verfügbar, wenn die Anwendung mit gesetzter DATABASE_URL gestartet wurde; sie werden in \@sec:benchmark im Detail behandelt.
+Die Visualisierungs-Endpunkte werden vom Frontend einmal beim Mount der Karten-Komponente abgerufen und ändern sich während des Anwendungslaufs nicht. Sie sind daher als statische, cacheable GeoJSON-Antworten konzipiert. Die Benchmark-Endpunkte sind nur verfügbar, wenn die Anwendung mit gesetzter DATABASE_URL gestartet wurde; sie werden in @sec:benchmark im Detail behandelt.
 
 == Benchmark-Framework <sec:benchmark>
 
@@ -437,7 +435,7 @@ Die zweite Klasse umfasst Map-Level-Metriken, die das untersuchte Straßennetz a
   ),
 ) <tbl:map_metrics>
 
-Diese Map-Metriken sind unabhängig vom Algorithmus und werden einmal pro Graphausschnitt erhoben. Sie erlauben es in Kapitel 7, beobachtete Unterschiede in den Algorithmus-Metriken kausal mit strukturellen Eigenschaften des Netzes zu verknüpfen, anstatt sie nur als Berlin-spezifische Beobachtungen darzustellen.
+Diese Map-Metriken sind unabhängig vom Algorithmus und werden einmal pro Graphausschnitt erhoben. Sie erlauben es in @evaluation, beobachtete Unterschiede in den Algorithmus-Metriken kausal mit strukturellen Eigenschaften des Netzes zu verknüpfen, anstatt sie nur als Berlin-spezifische Beobachtungen darzustellen.
 
 === CLI-Workflow
 
@@ -456,7 +454,7 @@ Das Benchmark-Paket ist als ausführbares Python-Modul (`python -m Benchmark`) k
   ),
 ) <tbl:benchmark_cli>
 
-Die Aufteilung in vier Kommandos folgt der oben beschriebenen Trennung von Problem-Generierung, Ausführung und Reporting. In der Praxis besteht ein typischer Evaluations-Workflow aus einem einmaligen `generate`-Lauf pro Graphausschnitt, einem oder mehreren `run`-Aufrufen für die zu vergleichenden Algorithmen-Konfigurationen und abschließenden `metrics`- und `report`-Aufrufen für die statistische Auswertung. Die Persistenz in der Datenbank, die in \@sec:datenbank beschrieben wird, erlaubt darüber hinaus die spätere Auswertung über mehrere Läufe und Graphausschnitte hinweg, ohne die Roh-JSON-Dateien aufbewahren zu müssen.
+Die Aufteilung in vier Kommandos folgt der oben beschriebenen Trennung von Problem-Generierung, Ausführung und Reporting. In der Praxis besteht ein typischer Evaluations-Workflow aus einem einmaligen `generate`-Lauf pro Graphausschnitt, einem oder mehreren `run`-Aufrufen für die zu vergleichenden Algorithmen-Konfigurationen und abschließenden `metrics`- und `report`-Aufrufen für die statistische Auswertung. Die Persistenz in der Datenbank, die in @sec:datenbank beschrieben wird, erlaubt darüber hinaus die spätere Auswertung über mehrere Läufe und Graphausschnitte hinweg, ohne die Roh-JSON-Dateien aufbewahren zu müssen.
 
 == Datenbankpersistenz <sec:datenbank>
 
@@ -481,8 +479,6 @@ Eine Konsequenz dieses Vorgehens ist eine Verdopplung der `CREATE TABLE`-Anweisu
 Die Datenbankanbindung wird beim Serverstart im Lifespan-Handler optional aufgebaut. Ist die Umgebungsvariable `DATABASE_URL` gesetzt, erstellt der Handler einen asyncpg-Verbindungspool und führt die idempotente Schema-Initialisierung aus. Fehlt die Variable, läuft der Server ohne Datenbankanbindung, und alle in @sec:rest aufgeführten Benchmark-Endpunkte antworten mit einem Statuscode `503 Service Unavailable`. Die Pathfinding-Endpunkte bleiben in beiden Fällen verfügbar, da sie ausschließlich auf den vorberechneten In-Memory-Strukturen aus @sec:hpastar arbeiten.
 
 Diese explizite Optionalität ist eine bewusste Designentscheidung. Sie erlaubt es zum einen, die Anwendung in Demonstrationsszenarien ohne Datenbankcontainer zu starten, etwa für die in @sec:visualisierung gezeigte Live-Visualisierung. Zum anderen entkoppelt sie das Hauptanliegen der Anwendung, die interaktive Algorithmenausführung, von der ausschließlich für die Evaluation benötigten Persistenz. Eine starre Kopplung würde dazu führen, dass jeder Serverstart einen verfügbaren Postgres-Container voraussetzt, was die Verwendung der Anwendung in Umgebungen ohne aufgebauten Container-Stack erschweren würde.
-
-#todo("Optional: kurzes Listing der bedingten Pool-Initialisierung im Lifespan-Handler (lifespan_db_init.py).")
 
 == Containerisierung <sec:container>
 
