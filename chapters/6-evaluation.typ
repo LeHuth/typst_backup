@@ -2,7 +2,8 @@
 
 = Evaluation <evaluation>
 
-Dieses Kapitel wertet die in @sec:benchmark beschriebenen Benchmark-Läufe quantitativ aus. Im Zentrum steht die Forschungsfrage: Unter welchen Bedingungen bietet HPA\* gegenüber A\* einen Laufzeitvorteil, und zu welchen Kosten in Bezug auf Pfadqualität und Vorberechnungsaufwand? Die Auswertung stützt sich auf zwei Datensätze, die sich in der absoluten Knotenzahl und damit in der räumlichen Knotendichte des untersuchten Straßennetzes unterscheiden. Beide Datensätze wurden mit derselben Benchmark-Infrastruktur erzeugt und verwenden identische Bucketing-Parameter (500 m Bucket-Breite, 10 Probleme pro Bucket).
+Dieses Kapitel wertet die in @sec:benchmark beschriebenen Benchmark-Läufe quantitativ aus. Im Zentrum steht die Forschungsfrage: Hierarchische Pfadsuche mit HPA\* im Vergleich zu A\* - Analyse von Laufzeit und
+Pfadqualität. Die Auswertung stützt sich auf zwei Datensätze, die sich in der absoluten Knotenzahl und damit in der räumlichen Knotendichte des untersuchten Straßennetzes unterscheiden. Beide Datensätze wurden mit derselben Benchmark-Infrastruktur erzeugt und verwenden identische Bucketing-Parameter (500 m Bucket-Breite, 10 Probleme pro Bucket).
 
 == Versuchsaufbau <sec:eval-setup>
 
