@@ -358,9 +358,7 @@ Neben den in @sec:visualisierung beschriebenen WebSocket-Endpunkten stellt das B
   ),
 ) <tbl:rest_endpoints>
 
-Die Trennung zwischen REST und WebSocket folgt einem einfachen Kriterium. Anfragen, deren Antwort von einem einzelnen Wert oder einer in sich abgeschlossenen Datenstruktur gebildet wird, nutzen REST. Anfragen, deren Mehrwert in der schrittweisen Beobachtung des Antwortaufbaus liegt, nutzen WebSocket. Die in der Tabelle aufgeführten Pfadendpunkte (/path, /hpa_path) sind dabei als Bequemlichkeitsschicht über demselben Generator-Code zu verstehen, der auch die WebSocket-Endpunkte bedient: Sie konsumieren den Generator vollständig und geben ausschließlich den finalen Zustand zurück. Dies ist insbesondere für den in @sec:hpastar erwähnten Benchmark-Adapter relevant, der zur Reduktion der Messstörungen ohnehin nicht an Zwischenzuständen interessiert ist.
-
-Die Visualisierungs-Endpunkte werden vom Frontend einmal beim Mount der Karten-Komponente abgerufen und ändern sich während des Anwendungslaufs nicht. Sie sind daher als statische, cacheable GeoJSON-Antworten konzipiert. Die Benchmark-Endpunkte sind nur verfügbar, wenn die Anwendung mit gesetzter DATABASE_URL gestartet wurde; sie werden in @sec:benchmark im Detail behandelt.
+Die Pfadendpunkte (`/path`, `/hpa_path`) konsumieren denselben Generator-Code wie die WebSocket-Endpunkte, geben jedoch nur den finalen Zustand zurück. Die Benchmark-Endpunkte sind nur verfügbar, wenn die Anwendung mit gesetzter `DATABASE_URL` gestartet wurde.
 
 == Benchmark-Framework <sec:benchmark>
 
@@ -454,31 +452,13 @@ Das Benchmark-Paket ist als ausführbares Python-Modul (`python -m Benchmark`) k
   ),
 ) <tbl:benchmark_cli>
 
-Die Aufteilung in vier Kommandos folgt der oben beschriebenen Trennung von Problem-Generierung, Ausführung und Reporting. In der Praxis besteht ein typischer Evaluations-Workflow aus einem einmaligen `generate`-Lauf pro Graphausschnitt, einem oder mehreren `run`-Aufrufen für die zu vergleichenden Algorithmen-Konfigurationen und abschließenden `metrics`- und `report`-Aufrufen für die statistische Auswertung. Die Persistenz in der Datenbank, die in @sec:datenbank beschrieben wird, erlaubt darüber hinaus die spätere Auswertung über mehrere Läufe und Graphausschnitte hinweg, ohne die Roh-JSON-Dateien aufbewahren zu müssen.
+Die Aufteilung in vier Kommandos folgt der oben beschriebenen Trennung von Problem-Generierung, Ausführung und Reporting. In der Praxis besteht ein typischer Evaluations-Workflow aus einem einmaligen `generate`-Lauf pro Graphausschnitt, einem oder mehreren `run`-Aufrufen für die zu vergleichenden Algorithmen-Konfigurationen und abschließenden `metrics`- und `report`-Aufrufen für die statistische Auswertung.
 
-== Datenbankpersistenz <sec:datenbank>
+=== Persistenz der Ergebnisse <sec:datenbank>
 
-Die in @sec:benchmark beschriebene Auswertung setzt voraus, dass die Ergebnisse einzelner Benchmark-Läufe über die Lebenszeit eines Serverprozesses hinaus erhalten bleiben und algorithmen- sowie graphausschnitt-übergreifend abgefragt werden können. Die hierfür eingesetzte Persistenzschicht stützt sich auf PostgreSQL 16 und ist im Modul `Benchmark/store.py` sowie im Lifespan-Handler aus @sec:architektur implementiert. Sie umfasst drei Aspekte, die in den folgenden Unterabschnitten behandelt werden: das Schema der gespeicherten Daten, die Wahl der Datenbanktreiber sowie die Initialisierung beim Serverstart.
+Die Benchmark-Ergebnisse werden optional in einer PostgreSQL-16-Datenbank persistiert, um Auswertungen über mehrere Läufe und Graphausschnitte hinweg zu ermöglichen. Das Schema besteht aus zwei Tabellen: `benchmark_runs` für die Lauf-Metadaten (Graphausschnitt, Algorithmen, Zeitstempel) und `benchmark_results` für die einzelnen Pfadergebnisse mit allen erfassten Metriken. Pfadkoordinaten werden als `JSONB`-Spalte gespeichert, da sie ausschließlich als Ganzes gelesen werden.
 
-=== Schemadesign
-
-Das Datenbankschema besteht aus zwei Tabellen, die in einer Eltern-Kind-Beziehung über eine Fremdschlüsselverknüpfung stehen. Die Tabelle `benchmark_runs` hält die Metadaten eines einzelnen Laufs, also die Konfiguration des Graphausschnitts (Mittelpunktkoordinaten, Radius, Netzwerktyp), die verwendete Algorithmen-Liste, den Zeitstempel sowie ein optionales Label. Die Tabelle `benchmark_results` enthält pro Algorithmus und pro Problem-Eintrag eine Zeile mit allen in @sec:astar und @sec:hpastar erfassten Metriken sowie der zugehörigen Problem-Beschreibung (Start- und Zielknoten, optimale Distanz, Bucket-Zuordnung). Die Beziehung wird über `run_id` mit `ON DELETE CASCADE` modelliert, sodass das Löschen eines Laufs die zugehörigen Ergebnisse mit entfernt und keine verwaisten Zeilen entstehen.
-
-Eine Designentscheidung dieses Schemas betrifft die Speicherung des konkreten Pfadverlaufs. Pro Pfadergebnis liegt die Knotenkoordinatensequenz als variabel lange Liste vor, deren Länge zwischen wenigen Knoten und mehreren Hundert variiert. Eine streng relationale Modellierung würde diese Sequenz in einer dritten Tabelle ablegen, mit einer Zeile je Pfadknoten. Bei einer typischen Stichprobe von einigen Hundert Pfadergebnissen pro Lauf und durchschnittlich mehreren Hundert Knoten pro Pfad führt dieser Ansatz schnell zu Tabellengrößen im sechsstelligen Bereich, ohne dass die einzelnen Knotenzeilen jemals selbst Gegenstand einer Anfrage werden. Pfade werden ausschließlich als Ganzes gelesen und im Frontend als GeoJSON-LineString verarbeitet (siehe @sec:rest). Die Implementierung wählt deshalb den pragmatischeren Weg und persistiert Pfade als `JSONB`-Spalte `path_coords`. Diese Spalte hält die vollständige Liste der `[lat, lon]`-Tupel; PostgreSQL speichert sie binär und erlaubt bei Bedarf einen indexierten Zugriff auf Teilstrukturen, was im aktuellen Anwendungsfall jedoch nicht genutzt wird. Der Trade-off ist bewusst: punktuelle Anfragen wie "welche Pfade durchqueren einen bestimmten Knoten" sind über `JSONB` deutlich teurer als über eine flache Knotentabelle, sind in der vorgesehenen Auswertung aber nicht erforderlich.
-
-=== Treiberwahl
-
-Die Anwendung greift in zwei verschiedenen Ausführungskontexten auf die Datenbank zu, die unterschiedliche I/O-Modelle verlangen. Der FastAPI-Webserver verarbeitet Anfragen in einer asynchronen Event-Schleife, in der jeder synchron blockierende Datenbankaufruf alle anderen gleichzeitig aktiven Anfragen pausieren würde. Das in @sec:benchmark beschriebene CLI-Werkzeug hingegen ist ein klassisch sequenzielles Skript, das die Algorithmen-Adapter nacheinander aufruft und seine Ergebnisse am Ende speichert; eine Event-Schleife wäre hier ohne Mehrwert.
-
-Aus dieser Asymmetrie folgt die Wahl zweier separater Treiber: asyncpg im Webserver, psycopg2 in der CLI. asyncpg ist ein nativer Asyncio-Treiber für PostgreSQL und integriert sich direkt in die `await`-basierten Endpunkte aus @sec:rest. Der CLI-seitige psycopg2 ist die langjährig etablierte synchrone Bibliothek und vermeidet die im CLI-Kontext überflüssige Kapselung jedes Datenbankaufrufs in `asyncio.run`. Beide Treiber sprechen dasselbe Postgres-Wire-Protokoll und sehen identische Daten; die Trennung beschränkt sich auf den Anwendungs-Code.
-
-Eine Konsequenz dieses Vorgehens ist eine Verdopplung der `CREATE TABLE`-Anweisungen: einmal in der CLI-seitigen Initialisierungsfunktion `init_db` und einmal im Lifespan-Handler des Webservers. Beide Stellen sind idempotent (`CREATE TABLE IF NOT EXISTS`) und referenzieren dasselbe Schema. Eine sauberere Lösung wäre die Auslagerung in ein Migrations-Tool wie Alembic, das eine kanonische Quelle für Schema-Änderungen verwaltet. Im Rahmen dieser Arbeit, in der das Schema während der gesamten Untersuchung stabil ist, wäre der dafür notwendige Aufwand unverhältnismäßig.
-
-=== Initialisierung und Optionalität
-
-Die Datenbankanbindung wird beim Serverstart im Lifespan-Handler optional aufgebaut. Ist die Umgebungsvariable `DATABASE_URL` gesetzt, erstellt der Handler einen asyncpg-Verbindungspool und führt die idempotente Schema-Initialisierung aus. Fehlt die Variable, läuft der Server ohne Datenbankanbindung, und alle in @sec:rest aufgeführten Benchmark-Endpunkte antworten mit einem Statuscode `503 Service Unavailable`. Die Pathfinding-Endpunkte bleiben in beiden Fällen verfügbar, da sie ausschließlich auf den vorberechneten In-Memory-Strukturen aus @sec:hpastar arbeiten.
-
-Diese explizite Optionalität ist eine bewusste Designentscheidung. Sie erlaubt es zum einen, die Anwendung in Demonstrationsszenarien ohne Datenbankcontainer zu starten, etwa für die in @sec:visualisierung gezeigte Live-Visualisierung. Zum anderen entkoppelt sie das Hauptanliegen der Anwendung, die interaktive Algorithmenausführung, von der ausschließlich für die Evaluation benötigten Persistenz. Eine starre Kopplung würde dazu führen, dass jeder Serverstart einen verfügbaren Postgres-Container voraussetzt, was die Verwendung der Anwendung in Umgebungen ohne aufgebauten Container-Stack erschweren würde.
+Die Datenbankanbindung ist optional. Ist die Umgebungsvariable `DATABASE_URL` nicht gesetzt, läuft der Server ohne Persistenz und die Benchmark-Endpunkte sind deaktiviert. Die Pathfinding-Funktionalität bleibt davon unberührt.
 
 == Containerisierung <sec:container>
 
