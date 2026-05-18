@@ -1,6 +1,7 @@
 #import "global.typ": *
 #import "@preview/codly:1.3.0": *
 #import "@preview/codly-languages:0.1.1": *
+#import "@preview/fletcher:0.5.7" as fletcher: diagram, node, edge
 #show: codly-init.with()
 
 
@@ -30,7 +31,52 @@ Das Backend nutzt den FastAPI-Lifespan-Kontextmanager zur einmaligen Initialisie
 + Konstruktion des abstrakten Graphen für HPA\* (siehe Abschnitt 5.4.3) inklusive Vorberechnung aller Intra-Cluster-Distanzen
 + optionaler Aufbau des Datenbank-Connection-Pools, sofern die Umgebungsvariable DATABASE_URL gesetzt ist.
 
-Die Anwendung läuft auch ohne Datenbankanbindung; in diesem Fall stehen lediglich die Benchmark-Persistenz-Endpunkte nicht zur Verfügung. Diese verzögerte Konstruktion sämtlicher Datenstrukturen beim Start ist gerechtfertigt, weil die Arbeit auf einen statischen Graphen ausgerichtet ist und alle Vorberechnungen damit nur einmal pro Serverstart anfallen, eine Konstellation, die für einen produktiven Routingdienst unrealistisch wäre, für die experimentelle Untersuchung jedoch angemessen ist. #todo("Abbildung 5.1: Architekturdiagramm: drei Boxen (Frontend, Backend, PostgreSQL), Pfeile mit Beschriftungen REST (/path, /hpa_path, /clusters, ...), WebSocket (/ws, /ws/hpa), SQL.")
+Die Anwendung läuft auch ohne Datenbankanbindung; in diesem Fall stehen lediglich die Benchmark-Persistenz-Endpunkte nicht zur Verfügung. Diese verzögerte Konstruktion sämtlicher Datenstrukturen beim Start ist gerechtfertigt, weil die Arbeit auf einen statischen Graphen ausgerichtet ist und alle Vorberechnungen damit nur einmal pro Serverstart anfallen, eine Konstellation, die für einen produktiven Routingdienst unrealistisch wäre, für die experimentelle Untersuchung jedoch angemessen ist.
+
+#figure(
+  diagram(
+    node-stroke: 0.6pt,
+    node-corner-radius: 4pt,
+    spacing: (4em, 4em),
+    node-inset: 8pt,
+
+    node((0, 0), align(center)[
+      *Frontend* \
+      #text(size: 9pt)[Nuxt 4 / Vue 3 \ Leaflet.js]
+    ], name: <frontend>),
+
+    node((2, 0), align(center)[
+      *Backend* \
+      #text(size: 9pt)[FastAPI (Python 3.11) \ NetworkX, OSMnx]
+    ], name: <backend>),
+
+    node((4, 0), align(center)[
+      *PostgreSQL 16* \
+      #text(size: 9pt)[Benchmark-Persistenz]
+    ], name: <db>),
+
+    node((2, 1.6), align(center)[
+      *Overpass API* \
+      #text(size: 9pt)[(extern)]
+    ], stroke: (thickness: 0.6pt, dash: "dashed"), name: <overpass>),
+
+    edge(<frontend>, <backend>, "-|>",
+      text(size: 9pt)[REST \ `/path`, `/hpa_path`, `/clusters`, ...],
+      label-side: left, bend: 25deg),
+    edge(<frontend>, <backend>, "<|-|>",
+      text(size: 9pt)[WebSocket \ `/ws`, `/ws/hpa`],
+      label-side: right, bend: -25deg),
+    edge(<backend>, <db>, "<|-|>",
+      text(size: 9pt)[SQL (asyncpg)]),
+    edge(<overpass>, <backend>, "-|>",
+      text(size: 9pt)[HTTP \ (Startsequenz)],
+      stroke: (thickness: 0.6pt, dash: "dashed")),
+  ),
+  caption: flex-caption(
+    [Architektur des verteilten Systems. Frontend und Backend kommunizieren über REST sowie eine bidirektionale WebSocket-Verbindung für die Live-Visualisierung. Das Backend persistiert Benchmark-Ergebnisse in PostgreSQL und bezieht beim Serverstart einmalig den OSM-Straßengraphen über die Overpass-API.],
+    [Systemarchitektur]
+  ),
+) <fig:architektur>
 
 == Datenbeschaffung und Graphaufbau <sec:datenbeschaffung>
 
