@@ -41,7 +41,7 @@
   language: "de", // en, de
   title: "Hierarchische Pfadsuche mit HPA* im Vergleich zu A* - Analyse von Laufzeit und Pfadqualität",
   // Optional subtitle. Set to none if you do not need a subtitle.
-  subtitle: none, supervisor: "Dr. Prof. Hartmut Schirmacher", reviewer: "Prof. Dr. Heike Ripphausen-Lipa", author: "Leonard Niclas Huth",
+  subtitle: none, supervisor: "Prof. Dr. Hartmut Schirmacher", reviewer: "Prof. Dr. Heike Ripphausen-Lipa", author: "Leonard Niclas Huth",
   // E.g. "Dezember 2025" or "Dec / 2025"
   submission-date: "18.05.2026",
   // For study programme "IMS"
