@@ -116,11 +116,35 @@ Die Build-Phase verarbeitet den OSM-Extrakt in mehreren Schritten. Zunächst wir
 
 Auf dem projizierten Graphen wird ein reguläres NxN-Gitter aufgespannt, dessen Rasterpunkte auf die jeweils nächstgelegenen OSM-Knoten gesnapped werden. Die gesnappten Knoten dienen als Seeds für die anschließende Partitionierung. Da die verwendeten OSM-Extrakte rechteckige Gebiete abdecken, erzeugt ein gleichmäßiges Gitter eine hinreichend ausgewogene Initialverteilung der Seeds. Alternativen wie die Auswahl zufälliger unbesetzter Knoten könnten organischere Cluster erzeugen, wurden im Rahmen dieser Arbeit jedoch nicht implementiert, da die Optimierung der Clustering-Methode selbst nicht Gegenstand der Untersuchung ist.
 
+#figure(
+  image("../figures/build-seeds.png", width: 100%),
+  caption: flex-caption(
+    [Verteilung der Seed-Knoten über dem Berliner Straßennetz, gewonnen aus einem regelmäßigen Gitter, dessen Rasterpunkte auf die jeweils nächstgelegenen OSM-Knoten gesnappt wurden. Die Farben dienen ausschließlich der Unterscheidung benachbarter Seeds und tragen keine semantische Information.],
+    [Verteilung der Seed-Knoten],
+  ),
+) <fig:build-seeds>
+
 Mit den Seeds als Startpunkten wird die Voronoi-Partitionierung durch einen simultanen Dijkstra-Lauf realisiert: Die Wellenfront jedes Seeds breitet sich im Graphen aus, bis alle Knoten einem Cluster zugewiesen sind. Knoten, an denen zwei Wellenfronten aufeinandertreffen, markieren die Clustergrenzen. Der Dijkstra-Lauf wird dabei auf einer ungerichteten Sicht des Basisgraphen ausgeführt, obwohl der Basisgraph selbst gerichtet ist. Diese Entscheidung ist für Straßennetze notwendig: Ein gerichteter Dijkstra würde an Einbahnstraßen abgebrochen werden und dadurch geografisch zerrissene Cluster erzeugen, deren Form durch die Verkehrsführung statt durch die räumliche Nähe bestimmt wäre. Da das Clustering ausschließlich der Partitionierung dient und nicht der Routenberechnung, ist die Vernachlässigung der Kantenrichtung in dieser Phase unproblematisch.
+
+#figure(
+  image("../figures/build-cluster.png", width: 100%),
+  caption: flex-caption(
+    [Voronoi-Partitionierung des Berliner Straßennetzes. Jeder Basisgraph-Knoten ist demjenigen Seed zugeordnet, zu dem er die geringste Netzwerkdistanz aufweist; die Färbung der Kanten markiert die Cluster-Zugehörigkeit ihrer Endknoten.],
+    [Voronoi-Partitionierung],
+  ),
+) <fig:build-cluster>
 
 Im Anschluss an die Partitionierung werden die Gate Nodes identifiziert. Ein Knoten wird als Gate erkannt, wenn er über mindestens eine Kante an einen Knoten aus einem benachbarten Cluster grenzt; die Gerichtetheit der Kante bestimmt zusätzlich, ob er als Entry- oder Exit-Gate registriert wird.
 
 Aus den identifizierten Gate Nodes wird abschließend der abstrakte Graph konstruiert. Die Inter-Cluster-Kanten ergeben sich unmittelbar aus den cluster-überschreitenden Kanten des Basisgraphen und tragen deren Gewichte. Die Intra-Cluster-Kanten erfordern eine separate Vorberechnung: Für jedes Cluster wird A\* zwischen allen Paaren von Gate Nodes ausgeführt, wobei die Suche auf den Teilgraphen des jeweiligen Clusters beschränkt ist. Das resultierende Kantengewicht entspricht den optimalen Traversierungskosten innerhalb des Clusters; die Beschränkung auf den jeweiligen Teilgraphen wurde im Datenmodell bereits motiviert. Die konkrete Umsetzung dieser Beschränkung im Code wird in @implementation behandelt.
+
+#figure(
+  image("../figures/build-abstrakter-graph.png", width: 100%),
+  caption: flex-caption(
+    [Detailansicht des abstrakten Graphen über der Voronoi-Partitionierung. Die violetten Kanten verbinden Gate Nodes und umfassen sowohl Inter-Cluster-Kanten zwischen benachbarten Clustern als auch Intra-Cluster-Kanten innerhalb desselben Clusters. Der Ausschnitt ist gewählt, weil bei Darstellung des gesamten Stadtgebiets die Dichte der Inter-Gate-Verbindungen die einzelnen Kanten visuell überlagern würde.],
+    [Abstrakter Graph],
+  ),
+) <fig:build-abstrakter-graph>
 
 Der vollständige Build-Zustand, bestehend aus Cluster-Zuordnung, Gate Nodes und abstraktem Graphen, wird derzeit nicht persistent gespeichert. Bei jedem Serverstart wird die Build-Phase vollständig erneut ausgeführt. Eine persistente Speicherung in der ohnehin im Projekt vorhandenen PostgreSQL-Instanz ist geplant; ihre Umsetzung wäre Voraussetzung dafür, die Vorberechnungszeit über mehrere Serverlebenszyklen hinweg zu amortisieren.
 
