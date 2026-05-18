@@ -7,53 +7,54 @@ Dieses Kapitel entwickelt das konzeptionelle System für die hierarchische Pfads
 
 == Systemstruktur <sec:systemstruktur>
 
-Das konzeptionelle System besteht aus sechs Komponenten des Routing-Kerns und zwei zusätzlichen Komponenten der wissenschaftlichen Auswertung. Die Komponenten ordnen sich entlang ihrer Datenflussbeziehungen einander zu; der vorliegende Abschnitt stellt diese Beziehungen statisch dar. Der zeitliche Ablauf der Komponenten in Build- und Query-Phase folgt in @sec:dynamik.
-
-#figure(
-  box(diagram(
+Das konzeptionelle System besteht aus sechs Komponenten des Routing-Kerns und zwei zusätzlichen Komponenten der wissenschaftlichen Auswertung. Die Komponenten ordnen sich entlang ihrer Datenflussbeziehungen einander zu; der vorliegende Abschnitt stellt diese Beziehungen statisch dar. Der zeitliche Ablauf der Komponenten in Build- und Query-Phase folgt in @sec:dynamik.\
+\
+#diagram(
     node-stroke: 1pt,
     node-corner-radius: 3pt,
     node-inset: 8pt,
     spacing: (4em, 2.5em),
 
     // Routing-Kern
-    node((1, 0), [Anfrageschnittstelle], name: <api>),
-    node((0, 1), [A\*-Suche], name: <astar>),
+    node((2, 0), [Anfrageschnittstelle], name: <api>),
+    node((1, 1), [A\*-Suche], name: <astar>),
     node((2, 1), [HPA\*-Suche], name: <hpastar>),
-    node((2, 2), [Abstraktionsschicht], name: <abstrakt>),
-    node((2, 3), [Partitionierung], name: <partition>),
+    node((2, 3), [Abstraktionsschicht], name: <abstrakt>),
+    node((2, 4), [Partitionierung], name: <partition>),
     node((1, 4), [Basisgraph-Quelle], name: <basis>),
 
     // Auswertungskomponenten (rechts, gestrichelt umrandet)
-    node((4, 0.5), [
+    node((3, 0), [
       #set align(center)
       Benchmark- \
       komponente
     ], stroke: (thickness: 1pt, dash: "dashed"), name: <benchmark>),
-    node((4, 2.5), [
+    node((3, 2.5), [
       #set align(center)
       Visualisierungs- \
       komponente
     ], stroke: (thickness: 1pt, dash: "dashed"), name: <vis>),
 
     // Datenfluss innerhalb des Routing-Kerns (Konsument zeigt auf Quelle)
-    edge(<api>, <astar>, "-|>"),
-    edge(<api>, <hpastar>, "-|>"),
-    edge(<astar>, <basis>, "-|>"),
-    edge(<hpastar>, <abstrakt>, "-|>"),
-    edge(<hpastar>, <basis>, "-|>"),
-    edge(<abstrakt>, <partition>, "-|>"),
-    edge(<abstrakt>, <basis>, "-|>"),
-    edge(<partition>, <basis>, "-|>"),
+    edge(<api>, <astar>, "<|-"),
+    edge(<api>, <hpastar>, "<|-"),
+    edge(<astar>, <basis>, "<|-"),
+    edge(<hpastar>, <abstrakt>, "<|-"),
+    edge(<hpastar>, <basis>, "<|-"),
+    edge(<abstrakt>, <partition>, "<|-"),
+    edge(<abstrakt>, <basis>, "<|-"),
+    edge(<partition>, <basis>, "<|-"),
 
     // Auswertung: Steuerung (Benchmark) und Beobachtung (Visualisierung)
-    edge(<benchmark>, <astar>, "-|>"),
-    edge(<benchmark>, <hpastar>, "-|>"),
-    edge(<vis>, <astar>, "-|>"),
-    edge(<vis>, <hpastar>, "-|>"),
-    edge(<vis>, <abstrakt>, "-|>"),
-    edge(<vis>, <partition>, "-|>"),
-  )),
+    edge(<benchmark>, <astar>, "<|-"),
+    edge(<benchmark>, <hpastar>, "<|-"),
+    edge(<vis>, <astar>, "<|-"),
+    edge(<vis>, <hpastar>, "<|-"),
+    edge(<vis>, <abstrakt>, "<|-"),
+    edge(<vis>, <partition>, "<|-"),
+  )
+#figure(
+  "",
   caption: flex-caption(
     [Statische Komponentensicht des konzeptionellen Systems. Pfeile zeigen vom Konsumenten zur Quelle. Die Benchmark- und die Visualisierungskomponente (gestrichelt umrandet) gehören nicht zum Routing-Kern, sondern verkörpern die wissenschaftliche Auswertung; sie sind über ihre Steuerungs- beziehungsweise Beobachtungsbeziehungen mit den jeweiligen Routing-Komponenten verbunden. Die zeitliche Abfolge der Verarbeitung in Build- und Query-Phase wird in @sec:dynamik dargestellt.],
     [Statische Komponentensicht]
@@ -166,7 +167,7 @@ Die Build-Phase verarbeitet den OSM-Extrakt in mehreren Schritten. Zunächst wir
 Auf dem projizierten Graphen wird ein reguläres NxN-Gitter aufgespannt, dessen Rasterpunkte auf die jeweils nächstgelegenen OSM-Knoten gesnapped werden. Die gesnappten Knoten dienen als Seeds für die anschließende Partitionierung. Da die verwendeten OSM-Extrakte rechteckige Gebiete abdecken, erzeugt ein gleichmäßiges Gitter eine hinreichend ausgewogene Initialverteilung der Seeds. Alternativen wie die Auswahl zufälliger unbesetzter Knoten könnten organischere Cluster erzeugen, wurden im Rahmen dieser Arbeit jedoch nicht implementiert, da die Optimierung der Clustering-Methode selbst nicht Gegenstand der Untersuchung ist.
 
 #figure(
-  image("../figures/build-seeds.png", width: 100%),
+  image("../figures/build-seeds.png.png", width: 100%),
   caption: flex-caption(
     [Verteilung der Seed-Knoten über dem Berliner Straßennetz, gewonnen aus einem regelmäßigen Gitter, dessen Rasterpunkte auf die jeweils nächstgelegenen OSM-Knoten gesnappt wurden. Die Farben dienen ausschließlich der Unterscheidung benachbarter Seeds und tragen keine semantische Information.],
     [Verteilung der Seed-Knoten],
@@ -176,7 +177,7 @@ Auf dem projizierten Graphen wird ein reguläres NxN-Gitter aufgespannt, dessen 
 Mit den Seeds als Startpunkten wird die Voronoi-Partitionierung durch einen simultanen Dijkstra-Lauf realisiert: Die Wellenfront jedes Seeds breitet sich im Graphen aus, bis alle Knoten einem Cluster zugewiesen sind. Knoten, an denen zwei Wellenfronten aufeinandertreffen, markieren die Clustergrenzen. Der Dijkstra-Lauf wird dabei auf einer ungerichteten Sicht des Basisgraphen ausgeführt, obwohl der Basisgraph selbst gerichtet ist. Diese Entscheidung ist für Straßennetze notwendig: Ein gerichteter Dijkstra würde an Einbahnstraßen abgebrochen werden und dadurch geografisch zerrissene Cluster erzeugen, deren Form durch die Verkehrsführung statt durch die räumliche Nähe bestimmt wäre. Da das Clustering ausschließlich der Partitionierung dient und nicht der Routenberechnung, ist die Vernachlässigung der Kantenrichtung in dieser Phase unproblematisch.
 
 #figure(
-  image("../figures/build-cluster.png", width: 100%),
+  image("../figures/build-cluster.png.png", width: 100%),
   caption: flex-caption(
     [Voronoi-Partitionierung des Berliner Straßennetzes. Jeder Basisgraph-Knoten ist demjenigen Seed zugeordnet, zu dem er die geringste Netzwerkdistanz aufweist; die Färbung der Kanten markiert die Cluster-Zugehörigkeit ihrer Endknoten.],
     [Voronoi-Partitionierung],
@@ -188,7 +189,7 @@ Im Anschluss an die Partitionierung werden die Gate Nodes identifiziert. Ein Kno
 Aus den identifizierten Gate Nodes wird abschließend der abstrakte Graph konstruiert. Die Inter-Cluster-Kanten ergeben sich unmittelbar aus den cluster-überschreitenden Kanten des Basisgraphen und tragen deren Gewichte. Die Intra-Cluster-Kanten erfordern eine separate Vorberechnung: Für jedes Cluster wird A\* zwischen allen Paaren von Gate Nodes ausgeführt, wobei die Suche auf den Teilgraphen des jeweiligen Clusters beschränkt ist. Das resultierende Kantengewicht entspricht den optimalen Traversierungskosten innerhalb des Clusters; die Beschränkung auf den jeweiligen Teilgraphen wurde im Datenmodell bereits motiviert. Die konkrete Umsetzung dieser Beschränkung im Code wird in @implementation behandelt.
 
 #figure(
-  image("../figures/build-abstrakter-graph.png", width: 100%),
+  image("../figures/build-abstract-graph.png.png", width: 100%),
   caption: flex-caption(
     [Detailansicht des abstrakten Graphen über der Voronoi-Partitionierung. Die violetten Kanten verbinden Gate Nodes und umfassen sowohl Inter-Cluster-Kanten zwischen benachbarten Clustern als auch Intra-Cluster-Kanten innerhalb desselben Clusters. Der Ausschnitt ist gewählt, weil bei Darstellung des gesamten Stadtgebiets die Dichte der Inter-Gate-Verbindungen die einzelnen Kanten visuell überlagern würde.],
     [Abstrakter Graph],
