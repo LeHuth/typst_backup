@@ -1,13 +1,18 @@
 #import "global.typ": *
 
-#heading("Appendix", numbering: none)
+#heading("Hilfsmittelverzeichnis")
 
-#lorem(55)
+Im Rahmen dieser Bachelorarbeit wurden KI-gestützte Werkzeuge (Large Language Models) als Hilfsmittel eingesetzt. Die Nutzung erfolgte in folgenden Bereichen:
 
-#todo(
-  [ Normally, an appendix is not necessary.
-  But, if you have (longer) parts of text
-  which should not appear within the body of the thesis text,
-  put them into the appendix
-  (and add references to important parts if necessary). ],
-)
++ *Assistenz bei Visualisierungsskripten:* Die Konzeption der Diagramme und Charts, also welche Daten auf welche Weise visualisiert werden, erfolgte eigenständig durch den Autor. Zur zeitsparenden Umsetzung wurde KI als Assistenzwerkzeug für die Erstellung der zugehörigen Python-Skripte (Matplotlib) eingesetzt. Die generierten Skripte wurden anschließend manuell überprüft und bei Bedarf angepasst.
+
+
++ *Intelligente Fehlersuche:* Anstelle klassischer Fehlersuche (z.B. in StackOverflow) wurde KI als Recherchewerkzeug bei der Fehlersuche im Code eingesetzt.
+
++ *Rechtschreib- und Grammatikprüfung:* KI wurde zur Überprüfung von Texten auf Rechtschreib- und Grammatikfehler verwendet.
+
+
++ *Dokumentation:* KI wurde zum Verfassen von Teilen der Code-Dokumentation eingesetzt, um die Nachvollziehbarkeit des Codes auch nach längerer Zeit sicherzustellen.
+
+Sämtliche KI-generierten Inhalte wurden kritisch geprüft, manuell überarbeitet und in den jeweiligen Kontext eingebettet. Die inhaltliche Verantwortung liegt vollständig beim Autor.
+

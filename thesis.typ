@@ -91,13 +91,11 @@
 #include "./chapters/glossary.typ"
 #pagebreak()
 
-#include "./chapters/hilfsmittel.typ"
-//#pagebreak()
 
 // Appendix (optional)
 //    Will appear BEFORE the Bibliograhy and after the Glossary.
 //    Alternatively, you might like the appendix AFTER the Bibliograhy.
 //    In this case you have to put the 'include appendix..' - line from below
 //    to near the end of file "lib.typ" ( just before the last closing "}" )
-// #include "./chapters/appendix.typ"
-// #pagebreak()
+#include "./chapters/appendix.typ"
+#pagebreak()

@@ -56,7 +56,7 @@ Das konzeptionelle System besteht aus sechs Komponenten des Routing-Kerns und zw
 #figure(
   "",
   caption: flex-caption(
-    [Statische Komponentensicht des konzeptionellen Systems. Pfeile zeigen vom Konsumenten zur Quelle. Die Benchmark- und die Visualisierungskomponente (gestrichelt umrandet) gehören nicht zum Routing-Kern, sondern verkörpern die wissenschaftliche Auswertung; sie sind über ihre Steuerungs- beziehungsweise Beobachtungsbeziehungen mit den jeweiligen Routing-Komponenten verbunden. Die zeitliche Abfolge der Verarbeitung in Build- und Query-Phase wird in @sec:dynamik dargestellt.],
+    [Statische Komponentensicht des konzeptionellen Systems. Pfeile zeigen von Quelle zum Konsumenten  . Die Benchmark- und die Visualisierungskomponente (gestrichelt umrandet) gehören nicht zum Routing-Kern, sondern verkörpern die wissenschaftliche Auswertung; sie sind über ihre Steuerungs- beziehungsweise Beobachtungsbeziehungen mit den jeweiligen Routing-Komponenten verbunden. Die zeitliche Abfolge der Verarbeitung in Build- und Query-Phase wird in @sec:dynamik dargestellt.],
     [Statische Komponentensicht]
   ),
 ) <fig:komponenten>

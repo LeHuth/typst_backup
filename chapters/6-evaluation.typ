@@ -24,15 +24,13 @@ Zwei OSM-Auszüge, jeweils mit 10 km Radius und dem Netzwerktyp `bike`, bilden d
     [Mittlerer Knotengrad],            [1,19],            [1,18],
     [Heuristische Genauigkeit],        [0,838],           [0,754],
     [Mittlerer Detour-Faktor],         [1,206],           [1,375],
-    [`dimension` (Sturtevant)],        [3,68],            [#todo[t. b. d.]],
+    [`dimension` (Sturtevant)],        [3,68],            [0.92],
     [Bucket-Bereich der Stichprobe],   [1–49],            [0–52],
     [Anzahl Test-Probleme],            [490],             [530],
   ),
 ) <tbl:datasets>
 
 Trotz fast identischen mittleren Knotengrads (1,19 gegenüber 1,18) unterscheiden sich die beiden Datensätze um mehr als eine Größenordnung in der absoluten Knotenzahl. Die Auswahl zielt damit bewusst nicht auf strukturelle Dichte-Variation im graphentheoretischen Sinn, sondern auf den Kontrast zwischen einem urbanen und einem ländlichen Straßennetz bei sonst identischen Erhebungsparametern.
-
-#todo("Sturtevant-`dimension` für den irischen Datensatz nachreichen (Berlin: 3,68). Der ursprünglich vorgesehene `transit_node_count` (Radien 500 m und 2.000 m) wurde nicht in die Tabelle aufgenommen, weil die Implementierung in `Benchmark/metrics.py` für beide Radien den Wert 0 liefert; eine Validierung dieses Ergebnisses war im Rahmen der Arbeit nicht mehr leistbar.")
 
 Die Beschränkung auf zwei Datensätze ist eine bewusste Entscheidung. Zwischenstufen wie Mittelstadt-Auszüge würden voraussichtlich Metriken liefern, die zwischen den beobachteten Extremen liegen, und keine qualitativ neuen Aussagen ermöglichen. Die orthogonale Variation der Cluster-Granularität in sieben Stufen erhöht die experimentelle Abdeckung dagegen erheblich.
 
