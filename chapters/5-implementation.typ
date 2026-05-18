@@ -385,7 +385,6 @@ Die Verwendung getrennter Layer pro Nachrichtentyp ermöglicht es dem Benutzer, 
 
 Auf dem in main.py konfigurierten Frontend, dargestellt in PathfinderMap.vue, werden zusätzlich die statischen Visualisierungsdaten der Vorberechnung angezeigt: Cluster-Polygone, Seed-Knoten, Cluster-Border-Kanten (Gates) sowie der vollständige abstrakte Graph. Diese Daten werden beim Mount der Komponente einmalig per REST über die Endpunkte /clusters, /seeds, /gates und /abstract_graph bezogen und als eigene Leaflet-Layer eingeblendet. Sie verändern sich während einer Pfadsuche nicht und erfordern daher kein Streaming.
 
-#todo("Abbildung 5.2: Screenshot der Live-Visualisierung mit aktiver A*-Suche, sichtbaren Cluster-Layern und Statistik-Panel.")
 
 == REST-API <sec:rest>
 
