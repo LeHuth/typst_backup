@@ -9,7 +9,56 @@ Dieses Kapitel entwickelt das konzeptionelle System für die hierarchische Pfads
 
 Das konzeptionelle System besteht aus sechs Komponenten des Routing-Kerns und zwei zusätzlichen Komponenten der wissenschaftlichen Auswertung. Die Komponenten ordnen sich entlang ihrer Datenflussbeziehungen einander zu; der vorliegende Abschnitt stellt diese Beziehungen statisch dar. Der zeitliche Ablauf der Komponenten in Build- und Query-Phase folgt in @sec:dynamik.
 
-#todo("Strukturabbildung erstellen und einbinden: acht Komponenten als Blöcke, Pfeile für Datenflussbeziehungen (Konsumenten zeigen auf Quellen, Visualisierung und Benchmark zeigen auf die beobachteten beziehungsweise angesteuerten Komponenten). Rein statische Sicht, keine Phasenabfolge.")
+#figure(
+  box(diagram(
+    node-stroke: 1pt,
+    node-corner-radius: 3pt,
+    node-inset: 8pt,
+    spacing: (4em, 2.5em),
+
+    // Routing-Kern
+    node((1, 0), [Anfrageschnittstelle], name: <api>),
+    node((0, 1), [A\*-Suche], name: <astar>),
+    node((2, 1), [HPA\*-Suche], name: <hpastar>),
+    node((2, 2), [Abstraktionsschicht], name: <abstrakt>),
+    node((2, 3), [Partitionierung], name: <partition>),
+    node((1, 4), [Basisgraph-Quelle], name: <basis>),
+
+    // Auswertungskomponenten (rechts, gestrichelt umrandet)
+    node((4, 0.5), [
+      #set align(center)
+      Benchmark- \
+      komponente
+    ], stroke: (thickness: 1pt, dash: "dashed"), name: <benchmark>),
+    node((4, 2.5), [
+      #set align(center)
+      Visualisierungs- \
+      komponente
+    ], stroke: (thickness: 1pt, dash: "dashed"), name: <vis>),
+
+    // Datenfluss innerhalb des Routing-Kerns (Konsument zeigt auf Quelle)
+    edge(<api>, <astar>, "-|>"),
+    edge(<api>, <hpastar>, "-|>"),
+    edge(<astar>, <basis>, "-|>"),
+    edge(<hpastar>, <abstrakt>, "-|>"),
+    edge(<hpastar>, <basis>, "-|>"),
+    edge(<abstrakt>, <partition>, "-|>"),
+    edge(<abstrakt>, <basis>, "-|>"),
+    edge(<partition>, <basis>, "-|>"),
+
+    // Auswertung: Steuerung (Benchmark) und Beobachtung (Visualisierung)
+    edge(<benchmark>, <astar>, "-|>"),
+    edge(<benchmark>, <hpastar>, "-|>"),
+    edge(<vis>, <astar>, "-|>"),
+    edge(<vis>, <hpastar>, "-|>"),
+    edge(<vis>, <abstrakt>, "-|>"),
+    edge(<vis>, <partition>, "-|>"),
+  )),
+  caption: flex-caption(
+    [Statische Komponentensicht des konzeptionellen Systems. Pfeile zeigen vom Konsumenten zur Quelle. Die Benchmark- und die Visualisierungskomponente (gestrichelt umrandet) gehören nicht zum Routing-Kern, sondern verkörpern die wissenschaftliche Auswertung; sie sind über ihre Steuerungs- beziehungsweise Beobachtungsbeziehungen mit den jeweiligen Routing-Komponenten verbunden. Die zeitliche Abfolge der Verarbeitung in Build- und Query-Phase wird in @sec:dynamik dargestellt.],
+    [Statische Komponentensicht]
+  ),
+) <fig:komponenten>
 
 Eingangspunkt der Datenflusskette ist die Basisgraph-Quelle. Sie liefert einen gerichteten Multigraphen mit geokodierten Knoten und längengewichteten Kanten, gewonnen aus einem OSM-Extrakt. Dieser Basisgraph ist die einzige externe Eingabe des Systems; alle weiteren Komponenten leiten ihre Daten aus ihm und voneinander ab.
 
