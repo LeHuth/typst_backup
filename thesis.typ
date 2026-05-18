@@ -89,6 +89,9 @@
 #pagebreak()
 
 #include "./chapters/glossary.typ"
+#pagebreak()
+
+#include "./chapters/hilfsmittel.typ"
 //#pagebreak()
 
 // Appendix (optional)
