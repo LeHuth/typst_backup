@@ -45,11 +45,9 @@ Die Definition der Intra-Cluster-Kantengewichte als reale, auf dem Basisgraphen 
 
 == Dynamik <sec:dynamik>
 
-Das System kennt zwei Laufzeitphasen, die sich grundlegend in ihrer Ausführungshäufigkeit und ihrem Ressourcenverhalten unterscheiden. Die Build-Phase wird einmalig pro OSM-Extrakt ausgeführt und erzeugt aus dem Rohgraphen die in @sec:datenmodell beschriebenen Datenstrukturen. Die Query-Phase nutzt diese vorberechneten Strukturen, um einzelne Pfadanfragen mit reduziertem Suchaufwand zu beantworten. Diese Trennung ist die zentrale Idee hierarchischen Routings: aufwändige Berechnungen werden aus dem zeitkritischen Anfragepfad in eine vorgelagerte Vorverarbeitung verschoben @Botea:2004.
+Das System kennt zwei Laufzeitphasen, die sich grundlegend in ihrer Ausführungshäufigkeit und ihrem Ressourcenverhalten unterscheiden. Die Build-Phase wird einmalig pro OSM-Extrakt ausgeführt und erzeugt aus dem Rohgraphen die in @sec:datenmodell beschriebenen Datenstrukturen. Die Query-Phase nutzt diese vorberechneten Strukturen, um einzelne Pfadanfragen mit reduziertem Suchaufwand zu beantworten. Diese Trennung ist die zentrale Idee hierarchischen Routings: aufwändige Berechnungen werden aus dem zeitkritischen Anfragepfad in eine vorgelagerte Vorverarbeitung verschoben @Botea:2004.\
 
-
-#figure(
-  box(diagram(
+#diagram(
     node-stroke: 1pt,
     node-corner-radius: 3pt,
     node-inset: 10pt,
@@ -60,7 +58,7 @@ Das System kennt zwei Laufzeitphasen, die sich grundlegend in ihrer Ausführungs
       *Build-Phase* \
       #text(size: 8pt, weight: "regular")[einmalig]
     ], stroke: none),
-    node((2, -0.7), [
+    node((3, -0.7), [
       #set align(center)
       *Query-Phase* \
       #text(size: 8pt, weight: "regular")[pro Anfrage]
@@ -79,11 +77,11 @@ Das System kennt zwei Laufzeitphasen, die sich grundlegend in ihrer Ausführungs
     edge(<gates>, <ag>, "-|>"),
 
     // Query-Phase (rechte Spalte, top -> bottom)
-    node((2, 0), [Start, Ziel], name: <input>),
-    node((2, 1), [Anbindung], name: <attach>),
-    node((2, 2), [Abstrakte Suche], name: <asearch>),
-    node((2, 3), [Refinement], name: <refine>),
-    node((2, 4), [Konkreter Pfad], name: <path>),
+    node((3, 0), [Start, Ziel], name: <input>),
+    node((3, 1), [Anbindung], name: <attach>),
+    node((3, 2), [Abstrakte Suche], name: <asearch>),
+    node((3, 3), [Refinement], name: <refine>),
+    node((3, 4), [Konkreter Pfad], name: <path>),
 
     edge(<input>, <attach>, "-|>"),
     edge(<attach>, <asearch>, "-|>"),
@@ -99,13 +97,16 @@ Das System kennt zwei Laufzeitphasen, die sich grundlegend in ihrer Ausführungs
       stroke: (thickness: 0.6pt, dash: "dashed"),
       text(size: 8pt)[Basisgraph],
       label-side: center),
-  )),
+  )
+
+
+#figure(
+  "",
   caption: flex-caption(
     [Zwei-Phasen-Architektur des Systems. Die Build-Phase erzeugt einmalig pro OSM-Extrakt die hierarchischen Datenstrukturen. Die Query-Phase nutzt den abstrakten Graphen für die globale Suche und greift für die Verfeinerung der gefundenen Gate-Sequenz auf den Basisgraphen zurück.],
     [Zwei-Phasen-Architektur]
   ),
 ) <fig:system_overview>
-
 
 
 
