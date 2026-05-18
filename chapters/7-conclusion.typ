@@ -32,7 +32,7 @@ Die in @sec:build-phase konzipierte Speicherung des Build-Zustands in der projek
 
 Die Übertragung des Verfahrens auf dynamische Graphen ist ein eigenständiges Forschungsthema, das in der Literatur bereits unter Stichworten wie Customizable Route Planning behandelt wird @Delling:2011. Eine entsprechende Erweiterung wäre ein substantieller Folgeschritt, der die in @sec:motivation angedeuteten praxisrelevanten Szenarien direkt adressiert.
 
-Eine empirische Validierung der vermuteten Mobile-Eignung erforderte schließlich einen Implementierungs-Port auf eine repräsentative mobile Laufzeitumgebung (Android oder iOS) und Messungen unter realistischen Speicher- und CPU-Beschränkungen. Ohne diese Messung bleibt die Mobilitäts-These aus @sec:motivation eine plausible, aber nicht überprüfte Vermutung.
+Eine empirische Validierung der vermuteten Mobile-Eignung erforderte schließlich einen Implementierungs-Port auf eine repräsentative mobile Laufzeitumgebung (Android oder iOS) und Messungen unter realistischen Speicher- und CPU-Beschränkungen. Vorgelagert ließe sich mit überschaubarem Aufwand die in @sec:limitations benannte Stichprobenlücke der Open-Set-Messung mit der bestehenden Infrastruktur schließen. Ohne diese Messungen bleibt die Mobilitäts-These aus @sec:motivation eine plausible, aber nicht überprüfte Vermutung.
 
 == Schlussbemerkung
 

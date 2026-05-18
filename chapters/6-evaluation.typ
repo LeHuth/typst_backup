@@ -24,7 +24,7 @@ Zwei OSM-Auszüge, jeweils mit 10 km Radius und dem Netzwerktyp `bike`, bilden d
     [Mittlerer Knotengrad],            [1,19],            [1,18],
     [Heuristische Genauigkeit],        [0,838],           [0,754],
     [Mittlerer Detour-Faktor],         [1,206],           [1,375],
-    [`dimension` (Sturtevant)],        [3,68],            [0.92],
+    [`dimension` (Sturtevant)],        [3,68],            [0,92],
     [Bucket-Bereich der Stichprobe],   [1–49],            [0–52],
     [Anzahl Test-Probleme],            [490],             [530],
   ),
@@ -133,7 +133,7 @@ Bei Grid-Size 10 expandiert A\* in den oberen Buckets des Berliner Graphen im Mi
 
 Die deutliche Diskrepanz zwischen Berlin (Reduktion bis etwa Faktor 65) und Ireland (bis etwa Faktor 17) ist algorithmisch erklärbar. In einem Netzwerk mit über 110.000 Knoten muss A\* einen ungleich größeren Anteil der Knoten expandieren, um den optimalen Pfad zu finden; HPA\* hingegen begrenzt seinen Suchraum auf den abstrakten Graphen und die clusterlokalen Teilgraphen, deren Größe nicht proportional mit der Gesamtknotenzahl wächst. Im irischen Graphen mit unter 5.000 Knoten ist der A\*-Suchraum ohnehin überschaubar, und die hierarchische Abstraktion kann verhältnismäßig weniger Knoten einsparen. Der Vorteil von HPA\* skaliert damit mit der Graphgröße und der Knotendichte: Je mehr Knoten auf engem geographischen Raum, desto stärker fällt die algorithmische Einsparung aus.
 
-Die Knoten-Reduktion fällt durchgehend stärker aus als die in @sec:eval-runtime beobachtete Laufzeit-Reduktion: Faktor 65 in den expandierten Knoten entspricht im selben Datensatz nur einem Laufzeit-Speedup von etwa 4,8.
+Die Knoten-Reduktion fällt durchgehend stärker aus als die in @sec:eval-runtime beobachtete Laufzeit-Reduktion: Faktor 65 in den expandierten Knoten entspricht im selben Datensatz nur einem Laufzeit-Speedup von etwa 4,8. Der Unterschied verweist auf die konstanten Per-Knoten-Kosten der abstrakten Suche, die durch die vorberechneten Intra-Cluster-Kanten pro Expansion teurer ist als ein A\*-Schritt auf dem Basisgraphen.
 
 === Open-Set-Größe als Speicherindikator
 
@@ -146,7 +146,7 @@ Die Knoten-Reduktion fällt durchgehend stärker aus als die in @sec:eval-runtim
 
 Bei Grid-Size 10 wächst die mittlere maximale Open-Set-Größe für A\* im Berliner Datensatz monoton von etwa 24 Einträgen im kürzesten Bucket auf nahezu 1.000 Einträge im längsten. Im irischen Datensatz steigt der A\*-Wert über denselben Bucket-Bereich von 11 auf etwa 110 Einträge, also auf einem rund eine Größenordnung niedrigeren Niveau. Die HPA\*-Werte liegen in beiden Datensätzen in den unteren Buckets nahe dem A\*-Niveau (Berlin Bucket 5: 54 gegenüber 71; Ireland Bucket 5: 11 gegenüber 17), wachsen aber strukturell nicht mit der Pfadlänge mit, weil die abstrakte Suche auf einem Graphen fester Größe operiert.
 
-Diese strukturelle Eigenschaft ist für mobile Endgeräte relevanter als der reine Laufzeit-Speedup. Selbst wenn HPA\* bei kurzen Anfragen im urbanen Datensatz nicht schneller ist als A\*, beschränkt es den Spitzenspeicherbedarf auf eine durch die Größe des abstrakten Graphen bestimmte Obergrenze, statt mit der Pfadlänge zu skalieren. Eine belastbare Quantifizierung für lange Pfade erfordert allerdings ein erneutes Sampling, da die vorliegende Serialisierung der HPA\*-Open-Set-Größe nur die unteren Buckets enthält.
+Diese strukturelle Eigenschaft ist für mobile Endgeräte relevanter als der reine Laufzeit-Speedup. Selbst wenn HPA\* bei kurzen Anfragen im urbanen Datensatz nicht schneller ist als A\*, beschränkt es den Spitzenspeicherbedarf auf eine durch die Größe des abstrakten Graphen bestimmte Obergrenze, statt mit der Pfadlänge zu skalieren. Eine belastbare Quantifizierung für lange Pfade erfordert allerdings ein erneutes Sampling, da die vorliegende Serialisierung der HPA\*-Open-Set-Größe nur die unteren Buckets enthält. Ein solches Sampling ist mit der bestehenden Benchmark-Infrastruktur ohne Anpassung des Datenmodells möglich und stellt den unmittelbar nächsten Validierungsschritt dar.
 
 == Vorberechnungskosten <sec:eval-precomputation>
 
@@ -178,6 +178,8 @@ Eine zweite Konsequenz der größeren Grid-Size ist allerdings, dass der abstrak
 In Berlin wächst die mittlere Anzahl in der abstrakten Suche besuchter Knoten von 288 (Grid-Size 5) auf 1.650 (Grid-Size 35), in Ireland von 39 auf 238. Eine größere Grid-Size verschiebt damit einen Teil der Arbeit von der Build-Phase in die Query-Phase. Dieser Trade-Off ist allerdings nicht ausgeglichen, denn die Build-Phase profitiert deutlich stärker. Der in @sec:eval-runtime beobachtete Query-Speedup wächst mit der Grid-Size monoton und wird durch den wachsenden Aufwand der abstrakten Suche nicht kompensiert.
 
 Die Skalierung der Vorberechnung unterscheidet sich erheblich zwischen den beiden Datensätzen: Berlin reduziert sich beim Übergang Grid-Size 5 auf 35 um Faktor 34, Ireland nur um Faktor 6,3. Die Ursache liegt in der absoluten Größe der individuellen Cluster bei hoher Grid-Size. Im Berliner Datensatz bleibt selbst bei Grid-Size 35 jeder Cluster mit durchschnittlich 90 Knoten noch substantiell groß, sodass die per-Cluster-A\*-Aufwendungen den Gesamtaufwand dominieren und die theoretische inverse-quadratische Skalierung näherungsweise greift. Im irischen Datensatz schrumpfen die Cluster auf durchschnittlich 4 Knoten, viele Voronoi-Zellen enthalten sogar gar keine Knoten mehr (statt der theoretischen 1.225 Cluster bei Grid-Size 35 existieren tatsächlich nur 1.102 nicht-leere Cluster). Die fixen Kosten pro Cluster für Voronoi-Zuordnung und Datenstruktur-Setup gewinnen damit relativ an Bedeutung, und die A\*-Kosten verschwinden in der Statistik. Die Skalierung flacht entsprechend ab.
+
+Die Amortisationsschwelle einer HPA\*-Konfiguration ergibt sich aus dem Verhältnis von einmaliger Vorberechnungszeit zu wiederkehrender Per-Query-Einsparung. Setzt man $T_("build")$ für die in dieser Sektion gemessene Vorberechnungszeit und $Delta t$ für die mittlere Laufzeitdifferenz zwischen A\* und HPA\* pro Anfrage einer gegebenen Pfadlängenklasse, so amortisiert sich der Aufwand nach $N = T_("build") slash Delta t$ Anfragen. Für eine gemischte Anfragelast ist $Delta t$ als gewichteter Mittelwert über die Bucket-Verteilung zu lesen; für ein homogenes Lastprofil mit überwiegend langen Anfragen verringert sich die Schwelle entsprechend, weil die Per-Query-Einsparung dort am höchsten ausfällt. Konkrete Werte für die untersuchten Konfigurationen sind in @sec:eval-summary aufgeführt.
 
 == Zusammenfassung der Ergebnisse <sec:eval-summary>
 

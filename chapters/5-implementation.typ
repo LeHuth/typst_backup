@@ -91,7 +91,7 @@ Die in dieser Arbeit verwendete Datenbasis besteht aus realen Straßennetzen, di
 === Untersuchungsgebiet
 
 Für die Entwicklung und die in Abschnitt 5.5 beschriebene Live-Visualisierung dient ein Ausschnitt von 5.000 m Radius um den Berliner Stadtkern (52.5200° N, 13.4050° O) als Standardkonfiguration. Dieser Ausschnitt repräsentiert ein dicht vernetztes innerstädtisches Straßennetz und eignet sich daher gut zur Veranschaulichung beider Algorithmen unter realistischen Bedingungen. Für die in Kapitel 6 durchgeführte Evaluation werden zusätzlich Ausschnitte mit unterschiedlicher Topologie und Knotendichte herangezogen, um das Verhalten der Algorithmen über verschiedene Netzcharakteristika hinweg vergleichen zu können.
-Als Netzwerktyp wird bike verwendet. Diese Wahl reduziert die strukturelle Komplexität des Graphen gegenüber dem Straßennetz für Kraftfahrzeuge: Einbahnstraßen-Asymmetrien und mehrspurige Aufteilungen, die im KFZ-Netz häufig zu mehreren parallelen gerichteten Kanten zwischen denselben Knoten führen, treten im Fahrradnetz nur eingeschränkt auf. Da die vorliegende Arbeit nicht die Modellierung verkehrsrechtlicher Restriktionen, sondern den algorithmischen Vergleich von A* und HPA* zum Gegenstand hat, vereinfacht die Wahl des Fahrradnetzes die Interpretation der Ergebnisse, ohne die Vergleichbarkeit beider Algorithmen einzuschränken.
+Als Netzwerktyp wird bike verwendet. Diese Wahl reduziert die strukturelle Komplexität des Graphen gegenüber dem Straßennetz für Kraftfahrzeuge: Einbahnstraßen-Asymmetrien und mehrspurige Aufteilungen, die im KFZ-Netz häufig zu mehreren parallelen gerichteten Kanten zwischen denselben Knoten führen, treten im Fahrradnetz nur eingeschränkt auf. Da die vorliegende Arbeit nicht die Modellierung verkehrsrechtlicher Restriktionen, sondern den algorithmischen Vergleich von A\* und HPA\* zum Gegenstand hat, vereinfacht die Wahl des Fahrradnetzes die Interpretation der Ergebnisse, ohne die Vergleichbarkeit beider Algorithmen einzuschränken.
 
 
 === Graphdatenstruktur
@@ -479,7 +479,7 @@ Die zweite Klasse umfasst Map-Level-Metriken, die das untersuchte Straßennetz a
     [`num_states`, `num_edges`], [Anzahl Knoten und Kanten des Graphen.],
     [`estimated_max_path_m`], [Heuristische obere Schranke des längsten kürzesten Pfades im Graphen, ermittelt durch ein Double-Sweep-Verfahren.],
     [`dimension`], [Quadratischer Koeffizient einer Polynom-Regression über die kumulative BFS-Frontgröße (§IV.D). Werte nahe Null deuten auf eindimensionale Strukturen wie ländliche Hauptstraßen hin, größere Werte auf zweidimensionale Stadtnetze.],
-    [`transit_node_count`], [Mittlere Anzahl von Transit-Knoten in einem festen Radius (§IV.C), berechnet bei zwei verschiedenen Radien. Misst die Engstellen-Charakteristik des Netzes.],
+    [`transit_node_count`], [Mittlere Anzahl von Transit-Knoten in einem festen Radius (§IV.C), berechnet bei zwei verschiedenen Radien. Misst die Engstellen-Charakteristik des Netzes.#footnote[Die Metrik lieferte im Rahmen dieser Arbeit für beide getesteten Radien den Wert 0; eine Validierung war im Bearbeitungszeitraum nicht mehr leistbar. Siehe @sec:limitations.]],
     [`heuristic_accuracy`], [Mittleres Verhältnis von Luftlinien- zu optimaler Pfaddistanz über die längsten Probleme. Werte nahe 1.0 zeigen, dass die Haversine-Heuristik den tatsächlichen Suchaufwand eng abschätzt.],
   ),
 ) <tbl:map_metrics>
