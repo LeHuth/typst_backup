@@ -12,7 +12,7 @@ Im Rahmen dieser Bachelorarbeit wurden KI-gestützte Werkzeuge (Large Language M
 + *Rechtschreib- und Grammatikprüfung:* KI wurde zur Überprüfung von Texten auf Rechtschreib- und Grammatikfehler verwendet.
 
 
-+ *Dokumentation:* KI wurde zum Verfassen von Teilen der Code-Dokumentation eingesetzt, um die Nachvollziehbarkeit des Codes auch nach längerer Zeit sicherzustellen.
++ *Dokumentation:* KI wurde zur Unterstützung beim Verfassen von Teilen der Code-Dokumentation eingesetzt, um die Nachvollziehbarkeit des Codes auch nach längerer Zeit sicherzustellen.
 
 Sämtliche KI-generierten Inhalte wurden kritisch geprüft, manuell überarbeitet und in den jeweiligen Kontext eingebettet. Die inhaltliche Verantwortung liegt vollständig beim Autor.
 
