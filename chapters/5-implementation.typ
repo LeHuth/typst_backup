@@ -38,7 +38,7 @@ Die Anwendung läuft auch ohne Datenbankanbindung; in diesem Fall stehen ledigli
     node-stroke: 0.6pt,
     node-corner-radius: 4pt,
     spacing: (3em, 3em),
-    node-inset: 7pt,
+    node-inset: 17pt,
 
     node((0, 0), [
       #set align(center)

@@ -47,16 +47,14 @@ Die Definition der Intra-Cluster-Kantengewichte als reale, auf dem Basisgraphen 
 
 Das System kennt zwei Laufzeitphasen, die sich grundlegend in ihrer Ausführungshäufigkeit und ihrem Ressourcenverhalten unterscheiden. Die Build-Phase wird einmalig pro OSM-Extrakt ausgeführt und erzeugt aus dem Rohgraphen die in @sec:datenmodell beschriebenen Datenstrukturen. Die Query-Phase nutzt diese vorberechneten Strukturen, um einzelne Pfadanfragen mit reduziertem Suchaufwand zu beantworten. Diese Trennung ist die zentrale Idee hierarchischen Routings: aufwändige Berechnungen werden aus dem zeitkritischen Anfragepfad in eine vorgelagerte Vorverarbeitung verschoben @Botea:2004.
 
-#figure(
-  diagram(
+
+#diagram(
     node-stroke: 1pt,
     node-corner-radius: 3pt,
     node-inset: 10pt,
     spacing: (5em, 2em),
-
     // Phasen-Beschriftungen (ueber jeder Spalte, ohne Rahmen)
     node((0, -0.7), [
-      #set align(center)
       *Build-Phase* \
       #text(size: 8pt, weight: "regular")[einmalig]
     ], stroke: none),
@@ -99,12 +97,10 @@ Das System kennt zwei Laufzeitphasen, die sich grundlegend in ihrer Ausführungs
       stroke: (thickness: 0.6pt, dash: "dashed"),
       text(size: 8pt)[Basisgraph],
       label-side: center),
-  ),
-  caption: flex-caption(
-    [Zwei-Phasen-Architektur des Systems. Die Build-Phase erzeugt einmalig pro OSM-Extrakt die hierarchischen Datenstrukturen. Die Query-Phase nutzt den abstrakten Graphen für die globale Suche und greift für die Verfeinerung der gefundenen Gate-Sequenz auf den Basisgraphen zurück.],
-    [Zwei-Phasen-Architektur]
-  ),
-) <fig:system_overview>
+  )
+
+
+
 
 === Build-Phase <sec:build-phase>
 
