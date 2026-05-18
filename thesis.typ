@@ -50,7 +50,7 @@
     #include "./chapters/abstract.typ"
   ],
   after-title: [
-    // Your content here, e.g. a statutory declaration:           // #include "./chapters/declaration.typ" 
+    #include "./chapters/dedication.typ"
   ],
   // Enable/disable outlines for "listings", "tables","equations", and/or "figures"
   show-list-of: (),

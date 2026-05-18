@@ -52,6 +52,6 @@ Sämtliche KI-generierten Inhalte wurden kritisch geprüft, manuell überarbeite
 Die im Auswertungskapitel berichteten Benchmark-Messungen wurden auf folgendem System ausgeführt:
 
 - *CPU:* AMD Ryzen 7 9800X3D / Apple M4
-- *Arbeitsspeicher:* 32gb DDR5 / 24gb DDR5
-- *Betriebssystem:* Windows 11 / MacOS
+- *Arbeitsspeicher:* 32 GB DDR5 / 24 GB DDR5
+- *Betriebssystem:* Windows 11 / macOS
 
