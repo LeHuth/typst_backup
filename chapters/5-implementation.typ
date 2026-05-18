@@ -37,39 +37,45 @@ Die Anwendung läuft auch ohne Datenbankanbindung; in diesem Fall stehen ledigli
   diagram(
     node-stroke: 0.6pt,
     node-corner-radius: 4pt,
-    spacing: (4em, 4em),
-    node-inset: 8pt,
+    spacing: (3em, 3em),
+    node-inset: 7pt,
 
-    node((0, 0), align(center)[
+    node((0, 0), [
+      #set align(center)
       *Frontend* \
       #text(size: 9pt)[Nuxt 4 / Vue 3 \ Leaflet.js]
     ], name: <frontend>),
 
-    node((2, 0), align(center)[
+    node((2, 0), [
+      #set align(center)
       *Backend* \
       #text(size: 9pt)[FastAPI (Python 3.11) \ NetworkX, OSMnx]
     ], name: <backend>),
 
-    node((4, 0), align(center)[
+    node((4, 0), [
+      #set align(center)
       *PostgreSQL 16* \
       #text(size: 9pt)[Benchmark-Persistenz]
     ], name: <db>),
 
-    node((2, 1.6), align(center)[
+    node((2, 1.6), [
+      #set align(center)
       *Overpass API* \
       #text(size: 9pt)[(extern)]
     ], stroke: (thickness: 0.6pt, dash: "dashed"), name: <overpass>),
 
     edge(<frontend>, <backend>, "-|>",
-      text(size: 9pt)[REST \ `/path`, `/hpa_path`, `/clusters`, ...],
-      label-side: left, bend: 25deg),
+      text(size: 9pt)[REST],
+      label-side: center, bend: 25deg),
     edge(<frontend>, <backend>, "<|-|>",
-      text(size: 9pt)[WebSocket \ `/ws`, `/ws/hpa`],
-      label-side: right, bend: -25deg),
+      text(size: 9pt)[WebSocket],
+      label-side: center, bend: -25deg),
     edge(<backend>, <db>, "<|-|>",
-      text(size: 9pt)[SQL (asyncpg)]),
+      text(size: 9pt)[SQL (asyncpg)],
+      label-side: center),
     edge(<overpass>, <backend>, "-|>",
-      text(size: 9pt)[HTTP \ (Startsequenz)],
+      text(size: 9pt)[HTTP (Start)],
+      label-side: center,
       stroke: (thickness: 0.6pt, dash: "dashed")),
   ),
   caption: flex-caption(
