@@ -1,4 +1,5 @@
 #import "global.typ": *
+#import "@preview/fletcher:0.5.7" as fletcher: diagram, node, edge
 
 = Konzept
 
@@ -47,10 +48,60 @@ Die Definition der Intra-Cluster-Kantengewichte als reale, auf dem Basisgraphen 
 Das System kennt zwei Laufzeitphasen, die sich grundlegend in ihrer Ausführungshäufigkeit und ihrem Ressourcenverhalten unterscheiden. Die Build-Phase wird einmalig pro OSM-Extrakt ausgeführt und erzeugt aus dem Rohgraphen die in @sec:datenmodell beschriebenen Datenstrukturen. Die Query-Phase nutzt diese vorberechneten Strukturen, um einzelne Pfadanfragen mit reduziertem Suchaufwand zu beantworten. Diese Trennung ist die zentrale Idee hierarchischen Routings: aufwändige Berechnungen werden aus dem zeitkritischen Anfragepfad in eine vorgelagerte Vorverarbeitung verschoben @Botea:2004.
 
 #figure(
-  image("../figures/system_overview.png", width: 100%),
-  caption: [Zwei-Phasen-Architektur des Systems. Die Build-Phase erzeugt
-  einmalig den abstrakten Graphen aus dem OSM-Extrakt. Die Query-Phase
-  nutzt diesen abstrakten Graphen, um Pfadanfragen zu beantworten.],
+  diagram(
+    node-stroke: 0.5pt,
+    node-corner-radius: 3pt,
+    node-inset: 7pt,
+    spacing: (2.2em, 5em),
+
+    // Phasen-Beschriftungen (links, ohne Rahmen)
+    node((-0.9, 0), align(center)[
+      *Build-Phase* \
+      #text(size: 8pt, weight: "regular")[(einmalig)]
+    ], stroke: none),
+    node((-0.9, 1), align(center)[
+      *Query-Phase* \
+      #text(size: 8pt, weight: "regular")[(pro Anfrage)]
+    ], stroke: none),
+
+    // Build-Phase (obere Reihe)
+    node((0, 0), align(center)[*OSM-* \ *Extrakt*], name: <osm>),
+    node((1, 0), align(center)[*Basisgraph*], name: <bg>),
+    node((2, 0), align(center)[*Voronoi-* \ *Partition*], name: <vor>),
+    node((3, 0), align(center)[*Gate* \ *Nodes*], name: <gates>),
+    node((4, 0), align(center)[*Abstrakter* \ *Graph*], name: <ag>),
+
+    edge(<osm>, <bg>, "-|>"),
+    edge(<bg>, <vor>, "-|>"),
+    edge(<vor>, <gates>, "-|>"),
+    edge(<gates>, <ag>, "-|>"),
+
+    // Query-Phase (untere Reihe)
+    node((0, 1), align(center)[*Start- und* \ *Zielkoord.*], name: <input>),
+    node((1, 1), align(center)[*Anbindung*], name: <attach>),
+    node((2, 1), align(center)[*Abstrakte* \ *Suche*], name: <asearch>),
+    node((3, 1), align(center)[*Refinement*], name: <refine>),
+    node((4, 1), align(center)[*Konkreter* \ *Pfad*], name: <path>),
+
+    edge(<input>, <attach>, "-|>"),
+    edge(<attach>, <asearch>, "-|>"),
+    edge(<asearch>, <refine>, "-|>"),
+    edge(<refine>, <path>, "-|>"),
+
+    // Datenuebergabe von Build- zu Query-Phase (gestrichelt)
+    edge(<ag>, <asearch>, "-|>",
+      stroke: (thickness: 0.5pt, dash: "dashed"),
+      text(size: 8pt)[abstrakter Graph],
+      bend: 20deg),
+    edge(<bg>, <refine>, "-|>",
+      stroke: (thickness: 0.5pt, dash: "dashed"),
+      text(size: 8pt)[Basisgraph],
+      bend: -20deg),
+  ),
+  caption: flex-caption(
+    [Zwei-Phasen-Architektur des Systems. Die Build-Phase erzeugt einmalig pro OSM-Extrakt die hierarchischen Datenstrukturen. Die Query-Phase nutzt den abstrakten Graphen für die globale Suche und greift für die Verfeinerung der gefundenen Gate-Sequenz auf den Basisgraphen zurück.],
+    [Zwei-Phasen-Architektur]
+  ),
 ) <fig:system_overview>
 
 === Build-Phase <sec:build-phase>
