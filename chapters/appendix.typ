@@ -23,7 +23,10 @@ Dieses Verzeichnis listet die zur Erstellung der vorliegenden Arbeit eingesetzte
 
 == Versionskontrolle
 
-*Git* als Versionskontrollsystem; das Repository des Projekts und die Quellen dieser Arbeit werden auf *GitHub* gehostet.
+*Git* als Versionskontrollsystem;
+
+== Containerisierung 
+*Docker* mit Docker-Compose zur einfachen Entwicklung auf verschiedenen Systemen.
 
 == KI-gestützte Werkzeuge
 
@@ -48,7 +51,7 @@ Sämtliche KI-generierten Inhalte wurden kritisch geprüft, manuell überarbeite
 
 Die im Auswertungskapitel berichteten Benchmark-Messungen wurden auf folgendem System ausgeführt:
 
-- *CPU:* #todo[vom Autor zu ergänzen]
-- *Arbeitsspeicher:* #todo[vom Autor zu ergänzen]
-- *Betriebssystem:* #todo[vom Autor zu ergänzen]
+- *CPU:* AMD Ryzen 7 9800X3D / Apple M4
+- *Arbeitsspeicher:* 32gb DDR5 / 24gb DDR5
+- *Betriebssystem:* Windows 11 / MacOS
 
