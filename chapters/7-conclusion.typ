@@ -30,7 +30,7 @@ Die in dieser Arbeit beschriebene Voronoi-Partitionierung lässt sich rekursiv a
 
 Die in @sec:build-phase konzipierte Speicherung des Build-Zustands in der projektseitig vorhandenen PostgreSQL-Instanz wäre eine vergleichsweise kleine Implementierungserweiterung mit substantieller Wirkung: Sobald der Build-Zustand serverübergreifend wiederverwendbar ist, verschiebt sich der relevante Bezugspunkt der Amortisation von „Anfragen pro Serverlebenszyklus" zu „Anfragen pro OSM-Auszug", was die in @sec:eval-summary dokumentierten Amortisationsschätzungen praxisnäher werden lässt.
 
-Die Übertragung des Verfahrens auf dynamische Graphen ist ein eigenständiges Forschungsthema, das in der Literatur bereits unter Stichworten wie Customizable Route Planning behandelt wird. Eine entsprechende Erweiterung wäre ein substantieller Folgeschritt, der die in @sec:motivation angedeuteten praxisrelevanten Szenarien direkt adressiert.
+Die Übertragung des Verfahrens auf dynamische Graphen ist ein eigenständiges Forschungsthema, das in der Literatur bereits unter Stichworten wie Customizable Route Planning behandelt wird @Delling:2011. Eine entsprechende Erweiterung wäre ein substantieller Folgeschritt, der die in @sec:motivation angedeuteten praxisrelevanten Szenarien direkt adressiert.
 
 Eine empirische Validierung der vermuteten Mobile-Eignung erforderte schließlich einen Implementierungs-Port auf eine repräsentative mobile Laufzeitumgebung (Android oder iOS) und Messungen unter realistischen Speicher- und CPU-Beschränkungen. Ohne diese Messung bleibt die Mobilitäts-These aus @sec:motivation eine plausible, aber nicht überprüfte Vermutung.
 

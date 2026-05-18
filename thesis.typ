@@ -48,9 +48,6 @@
   // the German abstract is optional, i.e. set to none.
   abstract-ge: [
     #include "./chapters/abstract.typ"
-    #todo(
-      [TODO: Die Kurzfassung],
-    )
   ],
   after-title: [
     // Your content here, e.g. a statutory declaration:           // #include "./chapters/declaration.typ" 

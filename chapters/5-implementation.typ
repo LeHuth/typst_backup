@@ -4,7 +4,7 @@
 #show: codly-init.with()
 
 
-= Implementation <implementation>
+= Implementierung <implementation>
 
 == Systemarchitektur <sec:architektur>
 

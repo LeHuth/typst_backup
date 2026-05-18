@@ -1,6 +1,6 @@
 #import "global.typ": *
 
-= Introduction
+= Einleitung
 
 == Motivation <sec:motivation>
 Routenplanung und Navigation sind ein alltäglicher Bestandteil des modernen Lebens. Anwendungen wie Google Maps oder OpenStreetMap-basierte Dienste ermöglichen es mobilen Endnutzern, effizient präferierte Pfade zu berechnen, je nach Fortbewegungsmittel etwa für das Auto, zu Fuß oder per Fahrrad.
